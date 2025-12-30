@@ -1,0 +1,296 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Companies House — One Page Viewer (API Key in UI)</title>
+<style>
+  :root { --ink:#111; --muted:#666; --bg:#f7f7fb; --card:#fff; --accent:#0b5fff; --warn:#a80000; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#0b5fff; color:#fff; padding:16px 20px; }
+  header h1 { margin:0; font-size:20px; }
+  main { padding:18px; max-width:1100px; margin:auto; }
+  .panel { background:var(--card); border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); margin:12px 0; }
+  .panel header { background:transparent; color:var(--ink); padding:14px 16px; border-bottom:1px solid #eee; }
+  .panel .body { padding:14px 16px; }
+  .grid { display:grid; grid-template-columns: 1fr; gap:12px; }
+  @media(min-width:900px){ .grid { grid-template-columns: 1.2fr 1fr; } }
+  label { font-weight:600; display:block; margin-bottom:6px; }
+  input[type=text], input[type=password] { width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:8px; font-size:16px; }
+  .controls { display:flex; gap:8px; align-items:center; margin:10px 0 4px; flex-wrap:wrap; }
+  button { background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer; }
+  button[disabled] { opacity:.6; cursor:progress; }
+  .muted { color:var(--muted); }
+  .err { color:var(--warn); font-weight:600; }
+  .kv { display:grid; grid-template-columns: 200px 1fr; gap:8px; }
+  .rows { display:grid; gap:8px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { padding:10px; border-bottom:1px solid #eee; vertical-align:top; }
+  th { background:#fafafa; text-align:left; position:sticky; top:0; z-index:1; }
+  .pill { font-size:12px; background:#eef3ff; color:#1c3faa; padding:2px 8px; border-radius:999px; display:inline-block; }
+  .spinner { display:inline-block; width:16px; height:16px; border:2px solid #ddd; border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-left:6px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .footer-note { font-size:12px; color:var(--muted); margin-top:8px; }
+  .right { margin-left:auto; }
+  .inline { display:inline-flex; gap:6px; align-items:center; }
+  .danger { background:#b00020; }
+  .secondary { background:#555; }
+</style>
+</head>
+<body>
+<header><h1>Companies House — One Page Viewer</h1></header>
+<main>
+
+  <!-- API Key Panel -->
+  <section class="panel">
+    <header><strong>API key</strong></header>
+    <div class="body">
+      <p class="muted">
+        Paste your <em>Companies House REST API</em> key here. It will be stored in your browser’s <code>localStorage</code> (you can clear it).
+        For production, prefer a server-side proxy so the key is never exposed client-side.
+      </p>
+
+      <div class="controls">
+        <label for="apiKey" style="flex-basis:100%">API key</label>
+        <input id="apiKey" type="password" placeholder="c891fc18-7cb0-4fbb-8878-7d8e9d708292" style="flex:1 1 420px" />
+        <button id="toggleKey" class="secondary" type="button">Show</button>
+        <button id="saveKey" type="button">Save</button>
+        <button id="clearKey" class="danger" type="button">Clear</button>
+        <span id="keyStatus" class="muted right"></span>
+      </div>
+      <div class="footer-note">
+        Tip: run this page via a local web server and add <code>http://localhost:8000</code> (or your host) to
+        your Companies House app’s <strong>JavaScript domains</strong> to satisfy CORS.
+      </div>
+    </div>
+  </section>
+
+  <!-- Lookup controls -->
+  <section class="panel">
+    <header><strong>Look up a company</strong></header>
+    <div class="body">
+      <label for="companyNumber">Company number (e.g. 01234567, SC123456, NI012345)</label>
+      <div class="controls">
+        <input id="companyNumber" type="text" placeholder="Enter company number" />
+        <button id="fetchBtn">Fetch</button>
+        <span id="busy" style="display:none"><span class="spinner"></span></span>
+        <span class="right muted">Paste a number and press <kbd>Enter</kbd></span>
+      </div>
+      <div id="error" class="err"></div>
+      <div class="footer-note">
+        Endpoints used: <code>/company/{number}</code>, <code>/company/{number}/filing-history</code>,
+        <code>/company/{number}/insolvency</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- Overview + Insolvency -->
+  <div class="grid">
+    <section class="panel" id="overviewPanel">
+      <header><strong>Overview</strong></header>
+      <div class="body" id="overviewBody"><span class="muted">No data yet.</span></div>
+    </section>
+
+    <section class="panel" id="insolvencyPanel">
+      <header><strong>Insolvency</strong></header>
+      <div class="body" id="insolvencyBody"><span class="muted">No data yet.</span></div>
+    </section>
+  </div>
+
+  <!-- Filing History -->
+  <section class="panel" id="filingsPanel">
+    <header><strong>Filing history</strong></header>
+    <div class="body">
+      <div id="filingsBody"><span class="muted">No data yet.</span></div>
+      <div class="controls">
+        <button id="moreBtn" style="display:none">Load more</button>
+        <span id="pagingInfo" class="muted"></span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/** *********************
+ * CONFIG
+ * **********************/
+const API_BASE = 'https://api.company-information.service.gov.uk';
+const PAGE_SIZE = 50;
+const STORAGE_KEY = 'ch_api_key';
+
+/** *********************
+ * Helpers
+ * **********************/
+const q = sel => document.querySelector(sel);
+const setBusy = b => q('#busy').style.display = b ? 'inline-block' : 'none';
+const showErr = msg => q('#error').textContent = msg || '';
+const getKey = () => localStorage.getItem(STORAGE_KEY) || '';
+const setKey = (key) => localStorage.setItem(STORAGE_KEY, key);
+const clearKey = () => localStorage.removeItem(STORAGE_KEY);
+
+/** Minimal templates for common filing description codes (expand as needed) */
+const DESCRIPTION_TEMPLATES = {
+  'accounts-with-accounts-type-full': 'Full accounts made up to {made_up_date}',
+  'confirmation-statement-with-updates': 'Confirmation statement made on {made_up_to} with updates',
+  'change-registered-office-address': 'Registered office address changed on {date}',
+  'appointment-of-director': 'Appointment of director on {date}',
+  'termination-of-appointment-of-director': 'Termination of appointment of director on {date}',
+};
+
+function kv(label, value, fallback='—') {
+  const safe = (value===undefined || value===null || value==='') ? fallback : value;
+  return `<div class="kv"><div class="muted">${label}</div><div>${safe}</div></div>`;
+}
+function address(addr) {
+  if (!addr) return '—';
+  return [addr.premises, addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country]
+    .filter(Boolean).join(', ');
+}
+function formatFilingDescription(item) {
+  if (item.description && !item.description.includes('-')) return item.description; // human already
+  const code = item.description || '';
+  const tpl = DESCRIPTION_TEMPLATES[code];
+  if (tpl && item.description_values) {
+    return tpl.replace(/\{(\w+)\}/g, (_, k) => item.description_values[k] || `{${k}}`);
+  }
+  return `${item.category || 'filing'} — ${code || item.type || item.transaction_id}`;
+}
+
+/** API call using runtime key */
+async function chGet(path) {
+  const key = getKey();
+  if (!key) throw new Error('No API key set. Paste your Companies House API key above and click Save.');
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Authorization': 'Basic ' + btoa(key + ':') }
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(()=> '');
+    throw new Error(`${res.status} ${res.statusText} – ${text}`);
+  }
+  return res.json();
+}
+
+/** Paging state */
+let paging = { start: 0, total: 0, items: [], company: '' };
+
+/** Fetch + Render */
+async function fetchAll(companyNumber, append=false) {
+  showErr('');
+  setBusy(true);
+  try {
+    const encoded = encodeURIComponent(companyNumber);
+    const [profile, insolvency, filings] = await Promise.all([
+      chGet(`/company/${encoded}`),
+      chGet(`/company/${encoded}/insolvency`).catch(e => (String(e.message).startsWith('404') ? null : Promise.reject(e))),
+      chGet(`/company/${encoded}/filing-history?items_per_page=${PAGE_SIZE}&start_index=${append ? paging.start : 0}`)
+    ]);
+
+    // Overview
+    q('#overviewBody').innerHTML = `
+      <div class="rows">
+        ${kv('Company name', `<strong>${profile.company_name}</strong>`)}
+        ${kv('Number', profile.company_number)} 
+        ${kv('Status', `<span class="pill">${profile.company_status || '—'}</span>`)}
+        ${kv('Type', profile.type)}
+        ${kv('Incorporated', profile.date_of_creation)}
+        ${kv('Registered office', address(profile.registered_office_address))}
+        ${kv('Jurisdiction', profile.jurisdiction)}
+        ${kv('SIC codes', (profile.sic_codes || []).join(', ') || '—')}
+        ${kv('Has insolvency history?', String(profile.has_insolvency_history))}
+        ${kv('Company page', `<a href="https://find-and-update.company-information.service.gov.uk/company/${profile.company_number}" target="_blank" rel="noopener">Open on Companies House ↗</a>`, '')}
+      </div>
+    `;
+
+    // Insolvency
+    const insEl = q('#insolvencyBody');
+    if (!insolvency || !insolvency.cases || insolvency.cases.length === 0) {
+      insEl.innerHTML = '<span class="muted">No insolvency cases found.</span>';
+    } else {
+      insEl.innerHTML = insolvency.cases.map((c, idx) => {
+        const dates = (c.dates||[]).map(d => `${(d.type||'').replace(/-/g,' ')}: <strong>${d.date}</strong>`).join('<br>');
+        const prac = (c.practitioners||[]).map(p => `${p.name} — ${p.role || ''} (${p.appointed_on || 'n/a'})`).join('<br>');
+        return `
+          <div class="panel" style="box-shadow:none;border:1px solid #eee;margin:8px 0">
+            <div class="body">
+              <div class="kv"><div class="muted">Case</div><div>#${c.number || (idx+1)} — <span class="pill">${c.type||'—'}</span></div></div>
+              ${kv('Dates', dates || '—')}
+              ${kv('Practitioners', prac || '—')}
+              ${kv('Notes', (c.notes||[]).join('<br>') || '—')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Filings + paging
+    if (!append) {
+      paging = { start: 0, total: 0, items: [], company: profile.company_number };
+      q('#filingsBody').innerHTML = '';
+    }
+    paging.start = (append ? paging.start : 0) + (filings.items?.length || 0);
+    paging.total = filings.total_count || (filings.items?.length || 0);
+    paging.items = (append ? paging.items.concat(filings.items || []) : (filings.items || []));
+
+    if (paging.items.length === 0) {
+      q('#filingsBody').innerHTML = '<span class="muted">No filings found.</span>';
+    } else {
+      q('#filingsBody').innerHTML = `
+        <table>
+          <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Doc</th></tr></thead>
+          <tbody>
+            ${paging.items.map(it => `
+              <tr>
+                <td>${it.date || ''}</td>
+                <td>${formatFilingDescription(it)}</td>
+                <td><span class="pill">${it.category || ''}</span></td>
+                <td>${it.links?.document_metadata ? `<a href="${it.links.document_metadata}" target="_blank" rel="noopener">View ↗</a>` : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+    const more = paging.start < paging.total;
+    q('#moreBtn').style.display = more ? 'inline-block' : 'none';
+    q('#pagingInfo').textContent = paging.total ? `Showing ${paging.items.length} of ${paging.total}` : '';
+
+  } catch (err) {
+    console.error(err);
+    const msg = String(err.message || '');
+    if (msg.includes('401')) showErr('Auth failed. Check your API key and domain settings (JavaScript domains).');
+    else if (msg.includes('CORS')) showErr('CORS blocked. Host this via http://localhost or a real domain and add it in JavaScript domains.');
+    else showErr(msg);
+  } finally {
+    setBusy(false);
+  }
+}
+
+/** UI handlers */
+q('#fetchBtn').addEventListener('click', () => {
+  const n = q('#companyNumber').value.trim();
+  if (!n) return showErr('Please enter a company number.');
+  fetchAll(n, false);
+});
+q('#companyNumber').addEventListener('keydown', e => { if (e.key==='Enter') q('#fetchBtn').click(); });
+q('#moreBtn').addEventListener('click', () => fetchAll(paging.company, true));
+
+/** API key UI */
+function refreshKeyUI() {
+  const key = getKey();
+  const has = !!key;
+  q('#apiKey').value = key;
+  q('#keyStatus').textContent = has ? 'Key saved in this browser.' : 'No key saved.';
+}
+q('#saveKey').addEventListener('click', () => { setKey(q('#apiKey').value.trim()); refreshKeyUI(); });
+q('#clearKey').addEventListener('click', () => { clearKey(); refreshKeyUI(); });
+q('#toggleKey').addEventListener('click', () => {
+  const el = q('#apiKey');
+  const showing = el.type === 'text';
+  el.type = showing ? 'password' : 'text';
+  q('#toggleKey').textContent = showing ? 'Show' : 'Hide';
+});
+refreshKeyUI();
+</script>
+</body>
+</html>
