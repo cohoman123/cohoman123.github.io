@@ -185,27 +185,34 @@ function humanizeType(s) {
 /** Practitioners address renderer (full detail per spec) */
 function renderPractitioner(pr) {
   const lines = [];
-  lines.push(`<div class="kv"><div class="muted">Name</div><div><strong>${pr.name || '—'}</strong></div></div>`);
-  lines.push(kv('Role', pr.role ? humanizeType(pr.role) : '—'));
-  lines.push(kv('Appointed on', pr.appointed_on || '—'));
-  lines.push(kv('Ceased to act on', pr.ceased_to_act_on || '—'));
+  lines.push(`<div class="kv"><div class="muted">Name</div><div><strong>${pr?.name || '—'}</strong></div></div>`);
+  lines.push(kv('Role', pr?.role ? humanizeType(pr.role) : '—'));
+  lines.push(kv('Appointed on', pr?.appointed_on || '—'));
+  lines.push(kv('Ceased to act on', pr?.ceased_to_act_on || '—'));
 
-  // Addresses: API returns an array; show each completely
-  const addrs = (pr.address || []);
-  if (addrs.length === 0) {
+  // Address can be: object | array<object> | null/undefined
+  let addresses = [];
+  if (Array.isArray(pr?.address)) {
+    addresses = pr.address;
+  } else if (pr?.address && typeof pr.address === 'object') {
+    addresses = [pr.address];
+  } // else: leave empty
+
+  if (addresses.length === 0) {
     lines.push(kv('Address', '—'));
   } else {
-    const block = addrs.map((a, i) => {
+    const block = addresses.map((a, i) => {
       const parts = [
         a.address_line_1, a.address_line_2, a.locality, a.region, a.postal_code, a.country
       ].filter(Boolean);
       return `<div style="margin-bottom:6px">
-        <div class="muted">Address ${addrs.length>1 ? i+1 : ''}</div>
+        <div class="muted">Address ${addresses.length>1 ? i+1 : ''}</div>
         <div>${parts.join(', ') || '—'}</div>
       </div>`;
     }).join('');
     lines.push(`<div class="kv"><div class="muted">Address</div><div>${block}</div></div>`);
   }
+
   return `<div class="case-card"><div class="body">${lines.join('')}</div></div>`;
 }
 
