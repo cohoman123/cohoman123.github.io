@@ -167,8 +167,19 @@ function kv(label, value, fallback='—') {
 }
 function formatCompanyAddress(addr) {
   if (!addr) return '—';
-  return [addr.premises, addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country]
-    .filter(Boolean).join(', ');
+  const parts = [];
+  // Optional care-of / PO Box come first if present
+  if (addr.care_of) parts.push(`c/o ${addr.care_of}`);
+  if (addr.po_box) parts.push(`PO Box ${addr.po_box}`);
+  // Then the usual address lines
+  if (addr.premises) parts.push(addr.premises);
+  if (addr.address_line_1) parts.push(addr.address_line_1);
+  if (addr.address_line_2) parts.push(addr.address_line_2);
+  if (addr.locality) parts.push(addr.locality);
+  if (addr.region) parts.push(addr.region);
+  if (addr.postal_code) parts.push(addr.postal_code);
+  if (addr.country) parts.push(addr.country);
+  return parts.join(', ')
 }
 function formatFilingDescription(item) {
   if (item.description && !item.description.includes('-')) return item.description; // already human
@@ -204,9 +215,17 @@ function renderPractitioner(pr) {
     lines.push(kv('Address', '—'));
   } else {
     const block = addresses.map((a, i) => {
-      const parts = [
-        a.address_line_1, a.address_line_2, a.locality, a.region, a.postal_code, a.country
-      ].filter(Boolean);
+      const parts = [];
+      if (a.care_of) parts.push(`c/o ${a.care_of}`);
+      if (a.po_box) parts.push(`PO Box ${a.po_box}`);
+      if (a.premises) parts.push(a.premises);
+      if (a.address_line_1) parts.push(a.address_line_1);
+      if (a.address_line_2) parts.push(a.address_line_2);
+      if (a.locality) parts.push(a.locality);
+      if (a.region) parts.push(a.region);
+      if (a.postal_code) parts.push(a.postal_code);
+      if (a.country) parts.push(a.country);
+
       return `<div style="margin-bottom:6px">
         <div class="muted">Address ${addresses.length>1 ? i+1 : ''}</div>
         <div>${parts.join(', ') || '—'}</div>
