@@ -1,408 +1,276 @@
-
 <!doctype html>
 <html lang="en" data-theme="auto">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Companies House — One Page Viewer</title>
-<style>
-  /* ---------- Light theme (default) ---------- */
-  :root {
-    --ink:#111; --muted:#666; --bg:#f7f7fb; --card:#fff; --accent:#0b5fff; --warn:#b00020;
-    --border:#e6e6e6; --thead:#fafafa; --shadow:0 1px 3px rgba(0,0,0,.08);
-  }
-  /* ---------- Dark theme ---------- */
-  [data-theme="dark"] {
-    --ink:#e6edf3; --muted:#9da7b3; --bg:#0d1117; --card:#161b22; --accent:#2f81f7; --warn:#ff6b6b;
-    --border:#2a2f37; --thead:#1b212a; --shadow:none;
-  }
-  /* ---------- Base ---------- */
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif; color:var(--ink); background:var(--bg); }
-  header { background:var(--accent); color:#fff; padding:16px 20px; display:flex; gap:8px; align-items:center; }
-  header h1 { margin:0; font-size:20px; flex:1; }
-  .top-actions { display:flex; gap:8px; align-items:center; }
-  main { padding:18px; max-width:1100px; margin:auto; }
-  .panel { background:var(--card); border-radius:10px; box-shadow:var(--shadow); margin:12px 0; border:1px solid var(--border); }
-  .panel header { background:transparent; color:var(--ink); padding:14px 16px; border-bottom:1px solid var(--border); }
-  .panel .body { padding:14px 16px; }
-  .grid { display:grid; grid-template-columns: 1fr; gap:16px; } /* more breathing room */
-  @media (min-width:1200px) {
-    .grid { grid-template-columns: 1.15fr 0.85fr; gap:16px; }
-  }
-  label { font-weight:600; display:block; margin-bottom:6px; }
-  input[type=text] { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:16px; background:transparent; color:var(--ink); }
-  .controls { display:flex; gap:8px; align-items:center; margin:10px 0 4px; flex-wrap:wrap; }
-  button { background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer; }
-  button[disabled] { opacity:.6; cursor:progress; }
-  .secondary { background:#555; }
-  [data-theme="dark"] .secondary { background:#303a46; }
-  .danger { background:var(--warn); }
-  .muted { color:var(--muted); }
-  .err { color:var(--warn); font-weight:600; }
-  .kv { display:grid; grid-template-columns: 220px 1fr; gap:8px; }
-  .rows { display:grid; gap:8px; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th, td { padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }
-  th { background:var(--thead); text-align:left; position:sticky; top:0; z-index:1; }
-  .pill { font-size:12px; background:#eef3ff; color:#1c3faa; padding:2px 8px; border-radius:999px; display:inline-block; }
-  [data-theme="dark"] .pill { background:#243b63; color:#cfe0ff; }
-  .spinner { display:inline-block; width:16px; height:16px; border:2px solid #ddd; border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-left:6px; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  .footer-note { font-size:12px; color:var(--muted); margin-top:8px; }
-  .right { margin-left:auto; }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Companies House — Overview (Dark)</title>
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    /* ---------- Light (default) ---------- */
+    :root {
+      --ink:#111; --muted:#666; --bg:#f7f7fb; --card:#fff; --accent:#0b5fff; --warn:#b00020;
+      --border:#e6e6e6; --thead:#fafafa; --shadow:0 1px 3px rgba(0,0,0,.08);
+      --tab-bg:#efefef; --tab-ink:#111; --tab-active-bg:#fff; --tab-active-border:#025f2a;
+      --pill-bg:#eef3ff; --pill-ink:#1c3faa;
+    }
+    /* ---------- Dark ---------- */
+    [data-theme="dark"] {
+      --ink:#e6edf3; --muted:#9da7b3; --bg:#0d1117; --card:#161b22; --accent:#2f81f7; --warn:#ff6b6b;
+      --border:#2a2f37; --thead:#1b212a; --shadow:none;
+      --tab-bg:#1a222d; --tab-ink:#cfd8e3; --tab-active-bg:#161b22; --tab-active-border:#25a36f;
+      --pill-bg:#243b63; --pill-ink:#cfe0ff;
+    }
 
-  /* ---------- Case cards ---------- */
-  .case-card { border:1px solid var(--border); border-radius:8px; margin:8px 0; }
-  .case-card .body { padding:10px 12px; }
-  .subhead { font-weight:700; margin-top:6px; margin-bottom:4px; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    /* ---------- Base ---------- */
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+    main { padding:24px 18px 96px; max-width:1100px; margin:auto; }
+    .panel { background:var(--card); border-radius:10px; box-shadow:var(--shadow); border:1px solid var(--border); }
+    .panel .body { padding:16px; }
+    .rows { display:grid; gap:12px; }
+    .kv { display:grid; grid-template-columns: 260px 1fr; gap:10px; }
+    .muted { color:var(--muted); }
+    .err { color:var(--warn); font-weight:600; }
+    .pill { font-size:12px; background:var(--pill-bg); color:var(--pill-ink); padding:2px 8px; border-radius:999px; display:inline-block; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-  /* ---------- Tiny footer (API key actions) ---------- */
-  .key-footer {
-    position:fixed; left:0; right:0; bottom:0; padding:8px 12px;
-    display:flex; gap:8px; align-items:center; justify-content:flex-end;
-    background:var(--card); border-top:1px solid var(--border);
-  }
-  .key-footer .muted { margin-right:auto; }
-</style>
+    /* ---------- Page header (CH-like) ---------- */
+    .ch-header { margin-top:8px; }
+    .ch-title { font-size:32px; font-weight:800; margin:0 0 6px 0; }
+    .ch-number { margin:0 0 12px; font-size:16px; }
+    .action-bar { display:flex; gap:8px; margin:12px 0 18px; flex-wrap:wrap; }
+    .btn { background:#1f7a40; color:#fff; border:none; padding:10px 14px; border-radius:6px; font-weight:700; cursor:pointer; }
+    .btn.secondary { background:#4a4f57; }
+    [data-theme="dark"] .btn.secondary { background:#303a46; }
+
+    /* ---------- Tabs (visual only; Overview active) ---------- */
+    .tabs { display:flex; gap:8px; border-bottom:1px solid var(--border); margin:18px 0 0; }
+    .tab {
+      background:var(--tab-bg); color:var(--tab-ink);
+      padding:8px 12px; border-radius:6px 6px 0 0; border:1px solid var(--border);
+      border-bottom:none; text-decoration:none; display:inline-block; font-weight:700;
+    }
+    .tab[aria-current="page"] {
+      background:var(--tab-active-bg); border-color:var(--border); border-bottom:2px solid var(--tab-active-border);
+    }
+    .tab.disabled { opacity:.7; cursor:not-allowed; }
+
+    /* ---------- Footer (API key actions) ---------- */
+    .key-footer {
+      position:fixed; left:0; right:0; bottom:0; padding:8px 12px;
+      display:flex; gap:8px; align-items:center; justify-content:flex-end;
+      background:var(--card); border-top:1px solid var(--border);
+    }
+    .key-footer .muted { margin-right:auto; }
+    button { background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer; }
+    button[disabled] { opacity:.6; cursor:progress; }
+    .secondary { background:#555; }
+    [data-theme="dark"] .secondary { background:#303a46; }
+    .danger { background:var(--warn); }
+
+    /* ---------- Small bits ---------- */
+    .spinner { display:inline-block; width:16px; height:16px; border:2px solid #ddd; border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-left:6px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .right { margin-left:auto; }
+
+  </style>
 </head>
 <body>
-<header>
-  <h1>Companies House — One Page Viewer</h1>
-  <div class="top-actions">
-    <button id="themeBtn" class="secondary" type="button" title="Toggle dark mode">Dark mode: Off</button>
-  </div>
-</header>
-
-<main>
-  <!-- Lookup controls -->
-  <section class="panel">
-    <header><strong>Look up a company</strong></header>
-    <div class="body">
-      <label for="companyNumber">Company number (e.g. 01234567, SC123456, NI012345)</label>
-      <div class="controls">
-        <input id="companyNumber" type="text" placeholder="Enter company number" />
-        <button id="fetchBtn">Fetch</button>
-        <span id="busy" style="display:none"><span class="spinner"></span></span>
-        <span class="right muted">Paste a number and press <kbd>Enter</kbd></span>
+  <main>
+    <!-- CH-style page head -->
+    <section class="ch-header">
+      <h1 id="companyName" class="ch-title">—</h1>
+      <p id="companyNumberLine" class="ch-number muted">Company number —</p>
+      <div class="action-bar">
+        <button class="btn secondary" id="themeToggleBtn" type="button" title="Toggle theme via URL">Toggle dark</button>
+        #Open on Companies House ↗</a>
       </div>
-      <div id="error" class="err"></div>
-      <div class="footer-note">
-        Endpoints used: <code>/company/{number}</code>, <code>/company/{number}/filing-history</code>, <code>/company/{number}/insolvency</code>.
-      </div>
-    </div>
-  </section>
 
-  <!-- Overview + Insolvency -->
-  <div class="grid">
-    <section class="panel" id="overviewPanel">
-      <header><strong>Overview</strong></header>
-      <div class="body" id="overviewBody"><span class="muted">No data yet.</span></div>
+      <!-- Tabs: Overview active; others link to official pages -->
+      <nav class="tabs" aria-label="Company sections">
+        #Overview</a>
+        <a class="tab" id="filingTab" target="_blank" rel="noreferrer noopener">Filing history</a>
+        <a class="tab" id="peopleTab" target="_blank" rel="noreferrer noopener">People</a>
+        <a class="tab" id="moreTab" target="_blank" rel="noreferrer noopener">More</a>
+      </nav>
     </section>
 
-    <section class="panel" id="insolvencyPanel">
-      <header><strong>Insolvency</strong></header>
-      <div class="body" id="insolvencyBody"><span class="muted">No data yet.</span></div>
+    <!-- Overview only -->
+    <section class="panel" id="overviewPanel" style="margin-top:0;">
+      <div class="body" id="overviewBody">
+        <span class="muted">Awaiting company number from URL…</span>
+      </div>
     </section>
-  </div>
 
-  <!-- Filing History -->
-  <section class="panel" id="filingsPanel">
-    <header><strong>Filing history</strong></header>
-    <div class="body">
-      <div id="filingsBody"><span class="muted">No filings yet.</span></div>
-      <div class="controls">
-        <button id="moreBtn" style="display:none">Load more</button>
-        <span id="pagingInfo" class="muted"></span>
-      </div>
-    </div>
-  </section>
-</main>
+    <!-- Inline error -->
+    <p id="error" class="err"></p>
+  </main>
 
-<!-- Tiny footer (API key prompt + clear) -->
-<footer class="key-footer">
-  <span id="keyStatus" class="muted">No API key saved.</span>
-  <button id="setKeyBtn" class="secondary" type="button" title="Set API key">Set API key…</button>
-  <button id="clearKeyBtn" class="danger" type="button" title="Clear API key">Clear</button>
-</footer>
+  <!-- API key footer -->
+  <footer class="key-footer">
+    <span id="keyStatus" class="muted">No API key saved.</span>
+    <button id="setKeyBtn" class="secondary" type="button" title="Set API key">Set API key…</button>
+    <button id="clearKeyBtn" class="danger" type="button" title="Clear API key">Clear</button>
+  </footer>
 
-<script>
-/** *********************
- * CONFIG
- * **********************/
-const API_BASE = 'https://api.company-information.service.gov.uk';
-const PAGE_SIZE = 50;
-const STORAGE_KEY = 'ch_api_key';
-const THEME_KEY = 'ch_theme'; // 'light' | 'dark'
+  <script>
+    /** *********************
+     * CONFIG
+     * **********************/
+    const API_BASE = 'https://api.company-information.service.gov.uk';
+    const STORAGE_KEY = 'ch_api_key';
 
-/** *********************
- * Helpers
- * **********************/
-const q = sel => document.querySelector(sel);
-const setBusy = b => q('#busy').style.display = b ? 'inline-block' : 'none';
-const showErr = msg => q('#error').textContent = msg || '';
+    /** *********************
+     * Helpers
+     * **********************/
+    const q = sel => document.querySelector(sel);
+    const showErr = msg => q('#error').textContent = msg || '';
 
-const getKey = () => localStorage.getItem(STORAGE_KEY) || '';
-const setKey = (key) => localStorage.setItem(STORAGE_KEY, key);
-const clearKey = () => localStorage.removeItem(STORAGE_KEY);
+    const getKey = () => localStorage.getItem(STORAGE_KEY) || '';
+    const setKey = (key) => localStorage.setItem(STORAGE_KEY, key);
+    const clearKey = () => localStorage.removeItem(STORAGE_KEY);
+    function refreshKeyUI() {
+      const has = !!getKey();
+      q('#keyStatus').textContent = has ? 'API key saved in this browser.' : 'No API key saved.';
+    }
 
-function refreshKeyUI() {
-  const has = !!getKey();
-  q('#keyStatus').textContent = has ? 'API key saved in this browser.' : 'No API key saved.';
-}
+    function kv(label, value, fallback='—') {
+      const safe = (value===undefined || value===null || value==='') ? fallback : value;
+      return `<div class="kv"><div class="muted">${label}</div><div>${safe}</div></div>`;
+    }
+    function humanizeType(s) {
+      if (!s) return '—';
+      return s.replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+    function formatCompanyAddress(addr) {
+      if (!addr) return '—';
+      return [addr.premises, addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country]
+        .filter(Boolean).join(', ');
+    }
 
-/** Minimal templates for common filing description codes (expand as needed) */
-const DESCRIPTION_TEMPLATES = {
-  'accounts-with-accounts-type-full': 'Full accounts made up to {made_up_date}',
-  'confirmation-statement-with-updates': 'Confirmation statement made on {made_up_to} with updates',
-  'change-registered-office-address': 'Registered office address changed on {date}',
-  'appointment-of-director': 'Appointment of director on {date}',
-  'termination-of-appointment-of-director': 'Termination of appointment of director on {date}',
-};
+    /** Theme control from URL: /{number}/dark|light|auto? */
+    function parseRoute() {
+      const parts = location.pathname.replace(/^\/+/, '').split('/').filter(Boolean);
+      const number = parts[0] || '';
+      const mode = (parts[1] || '').toLowerCase();
+      const theme = mode === 'dark' ? 'dark' : (mode === 'light' ? 'light' : 'auto');
+      return { number, theme };
+    }
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      }
+    }
+    function nextTheme(theme) {
+      return theme === 'dark' ? 'light' : (theme === 'light' ? 'auto' : 'dark');
+    }
+    function setThemeViaUrl(newTheme) {
+      const { number } = parseRoute();
+      const path = `/${encodeURIComponent(number || '')}/${newTheme}`;
+      history.pushState({ number, theme: newTheme }, '', path);
+      applyTheme(newTheme);
+    }
 
-function kv(label, value, fallback='—') {
-  const safe = (value===undefined || value===null || value==='') ? fallback : value;
-  return `<div class="kv"><div class="muted">${label}</div><div>${safe}</div></div>`;
-}
-function formatCompanyAddress(addr) {
-  if (!addr) return '—';
-  const parts = [];
-  // Optional care-of / PO Box come first if present
-  if (addr.care_of) parts.push(`c/o ${addr.care_of}`);
-  if (addr.po_box) parts.push(`PO Box ${addr.po_box}`);
-  // Then the usual address lines
-  if (addr.premises) parts.push(addr.premises);
-  if (addr.address_line_1) parts.push(addr.address_line_1);
-  if (addr.address_line_2) parts.push(addr.address_line_2);
-  if (addr.locality) parts.push(addr.locality);
-  if (addr.region) parts.push(addr.region);
-  if (addr.postal_code) parts.push(addr.postal_code);
-  if (addr.country) parts.push(addr.country);
-  return parts.join(', ')
-}
-function formatFilingDescription(item) {
-  if (item.description && !item.description.includes('-')) return item.description; // already human
-  const code = item.description || '';
-  const tpl = DESCRIPTION_TEMPLATES[code];
-  if (tpl && item.description_values) {
-    return tpl.replace(/\{(\w+)\}/g, (_, k) => item.description_values[k] || `{${k}}`);
-  }
-  return `${item.category || 'filing'} — ${code || item.type || item.transaction_id}`;
-}
-function humanizeType(s) {
-  if (!s) return '—';
-  return s.replace(/-/g,' ').replace(/\b\w/g, c => c.toUpperCase());
-}
+    /** API call using runtime key */
+    async function chGet(path) {
+      const key = getKey();
+      if (!key) throw new Error('No API key set. Click “Set API key…” in the footer and enter your Companies House REST API key.');
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { 'Authorization': 'Basic ' + btoa(key + ':') }
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(()=> '');
+        throw new Error(`${res.status} ${res.statusText} – ${text}`);
+      }
+      return res.json();
+    }
 
-/** Practitioners address renderer (full detail per spec) */
-function renderPractitioner(pr) {
-  const lines = [];
-  lines.push(`<div class="kv"><div class="muted">Name</div><div><strong>${pr?.name || '—'}</strong></div></div>`);
-  lines.push(kv('Role', pr?.role ? humanizeType(pr.role) : '—'));
-  lines.push(kv('Appointed on', pr?.appointed_on || '—'));
-  lines.push(kv('Ceased to act on', pr?.ceased_to_act_on || '—'));
+    /** Render Overview only */
+    async function loadOverviewFromUrl() {
+      showErr('');
+      const { number, theme } = parseRoute();
+      applyTheme(theme);
 
-  // Address can be: object | array<object> | null/undefined
-  let addresses = [];
-  if (Array.isArray(pr?.address)) {
-    addresses = pr.address;
-  } else if (pr?.address && typeof pr.address === 'object') {
-    addresses = [pr.address];
-  } // else: leave empty
+      if (!number) {
+        q('#overviewBody').innerHTML = '<span class="muted">Add a company number to the URL (e.g. /01234567/dark).</span>';
+        q('#companyName').textContent = 'Companies House — Overview';
+        q('#companyNumberLine').textContent = 'Company number —';
+        document.title = 'Companies House — Overview';
+        return;
+      }
 
-  if (addresses.length === 0) {
-    lines.push(kv('Address', '—'));
-  } else {
-    const block = addresses.map((a, i) => {
-      const parts = [];
-      if (a.care_of) parts.push(`c/o ${a.care_of}`);
-      if (a.po_box) parts.push(`PO Box ${a.po_box}`);
-      if (a.premises) parts.push(a.premises);
-      if (a.address_line_1) parts.push(a.address_line_1);
-      if (a.address_line_2) parts.push(a.address_line_2);
-      if (a.locality) parts.push(a.locality);
-      if (a.region) parts.push(a.region);
-      if (a.postal_code) parts.push(a.postal_code);
-      if (a.country) parts.push(a.country);
+      try {
+        q('#overviewBody').innerHTML = 'Loading<span class="spinner"></span>';
+        const encoded = encodeURIComponent(number);
+        const profile = await chGet(`/company/${encoded}`);
 
-      return `<div style="margin-bottom:6px">
-        <div class="muted">Address ${addresses.length>1 ? i+1 : ''}</div>
-        <div>${parts.join(', ') || '—'}</div>
-      </div>`;
-    }).join('');
-    lines.push(`<div class="kv"><div class="muted">Address</div><div>${block}</div></div>`);
-  }
+        // Header
+        q('#companyName').textContent = profile.company_name || '—';
+        q('#companyNumberLine').innerHTML = `Company number <strong class="mono">${profile.company_number || number}</strong>`;
+        document.title = `${profile.company_name || number} — Overview`;
 
-  return `<div class="case-card"><div class="body">${lines.join('')}</div></div>`;
-}
+        // Tabs (external CH links for non-overview)
+        const chBase = `https://find-and-update.company-information.service.gov.uk/company/${encodeURIComponent(profile.company_number || number)}`;
+        q('#chOpenBtn').href = chBase;
+        q('#filingTab').href = `${chBase}/filing-history`;
+        q('#peopleTab').href = `${chBase}/officers`;
+        q('#moreTab').href = `${chBase}`;
 
-/** API call using runtime key */
-async function chGet(path) {
-  const key = getKey();
-  if (!key) throw new Error('No API key set. Click “Set API key…” in the footer and enter your Companies House REST API key.');
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Authorization': 'Basic ' + btoa(key + ':') }
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(()=> '');
-    throw new Error(`${res.status} ${res.statusText} – ${text}`);
-  }
-  return res.json();
-}
-
-/** Paging state */
-let paging = { start: 0, total: 0, items: [], company: '' };
-
-/** Fetch + Render */
-async function fetchAll(companyNumber, append=false) {
-  showErr('');
-  setBusy(true);
-  try {
-    const encoded = encodeURIComponent(companyNumber);
-    const [profile, insolvency, filings] = await Promise.all([
-      chGet(`/company/${encoded}`),
-      chGet(`/company/${encoded}/insolvency`).catch(e => (String(e.message).startsWith('404') ? null : Promise.reject(e))),
-      chGet(`/company/${encoded}/filing-history?items_per_page=${PAGE_SIZE}&start_index=${append ? paging.start : 0}`)
-    ]);
-
-    // Overview
-    q('#overviewBody').innerHTML = `
-      <div class="rows">
-        ${kv('Company name', `<strong>${profile.company_name}</strong>`)}
-        ${kv('Number', profile.company_number)} 
-        ${kv('Status', `<span class="pill">${profile.company_status || '—'}</span>`)}
-        ${kv('Type', profile.type)}
-        ${kv('Incorporated', profile.date_of_creation)}
-        ${kv('Registered office', formatCompanyAddress(profile.registered_office_address))}
-        ${kv('Jurisdiction', profile.jurisdiction)}
-        ${kv('SIC codes', (profile.sic_codes || []).join(', ') || '—')}
-        ${kv('Has insolvency history?', String(profile.has_insolvency_history))}
-        ${kv('Company page', `https://find-and-update.company-information.service.gov.uk/company/${profile.company_number}Open on Companies House ↗</a>`, '')}
-      </div>
-    `;
-
-    // Insolvency — full details
-    const insEl = q('#insolvencyBody');
-    if (!insolvency || !insolvency.cases || insolvency.cases.length === 0) {
-      insEl.innerHTML = '<span class="muted">No insolvency cases found.</span>';
-    } else {
-      insEl.innerHTML = insolvency.cases.map((c, idx) => {
-        const dateList = (c.dates||[]).map(d => `<li>${humanizeType(d.type)}: <strong>${d.date}</strong></li>`).join('');
-        const notes = (c.notes||[]).map(n => `<li>${n}</li>`).join('');
-
-        const practitioners = (c.practitioners||[]).map(renderPractitioner).join('');
-
-        return `
-          <div class="panel case-card">
-            <div class="body">
-              ${kv('Case', `#${c.number || (idx+1)} — <span class="pill">${humanizeType(c.type) || '—'}</span>`)}
-              ${kv('Linked charge', c.links?.charge ? `${c.links.charge}View ↗</a>` : '—')}
-              <div class="subhead">Case dates</div>
-              ${dateList ? `<ul>${dateList}</ul>` : '<div class="muted">No dates listed.</div>'}
-              <div class="subhead">Notes</div>
-              ${notes ? `<ul>${notes}</ul>` : '<div class="muted">None.</div>'}
-              <div class="subhead">Practitioners</div>
-              ${practitioners || '<div class="muted">No practitioners listed.</div>'}
-            </div>
+        // Overview body (selected key fields)
+        q('#overviewBody').innerHTML = `
+          <div class="rows">
+            ${kv('Registered office address', formatCompanyAddress(profile.registered_office_address))}
+            ${kv('Company status', `<span class="pill">${humanizeType(profile.company_status) || '—'}</span>`)}
+            ${kv('Company type', humanizeType(profile.type))}
+            ${kv('Incorporated on', profile.date_of_creation || '—')}
+            ${kv('Jurisdiction', humanizeType(profile.jurisdiction))}
+            ${kv('Nature of business (SIC)', (profile.sic_codes || []).join(', ') || '—')}
+            ${kv('Has insolvency history?', String(profile.has_insolvency_history))}
+            ${kv('Registered office is in', profile.registered_office_is_in_dispute ? 'DISPUTE' : 'Good standing')}
+            ${kv('Companies House page', `${chBase}${chBase}</a>`)}
           </div>
         `;
-      }).join('');
+      } catch (err) {
+        console.error(err);
+        const msg = String(err.message || '');
+        if (msg.includes('401')) showErr('Auth failed. Check your API key (and that this origin is allowed in Companies House “JavaScript domains”).');
+        else if (msg.includes('404')) showErr('Company not found. Check the number in the URL.');
+        else if (msg.includes('CORS')) showErr('CORS blocked. Host this via GitHub Pages/Netlify/Vercel and add your origin in JavaScript domains.');
+        else showErr(msg);
+        q('#overviewBody').innerHTML = '<span class="muted">No data.</span>';
+      }
     }
 
-    // Filings + paging
-    if (!append) {
-      paging = { start: 0, total: 0, items: [], company: profile.company_number };
-      q('#filingsBody').innerHTML = '';
-    }
-    paging.start = (append ? paging.start : 0) + (filings.items?.length || 0);
-    paging.total = filings.total_count || (filings.items?.length || 0);
-    paging.items = (append ? paging.items.concat(filings.items || []) : (filings.items || []));
+    /** Wire up footer actions and theme toggle */
+    q('#setKeyBtn').addEventListener('click', () => {
+      const current = getKey();
+      const entered = prompt('Enter your Companies House REST API key:', current || '');
+      if (entered !== null) {
+        const trimmed = entered.trim();
+        if (trimmed) setKey(trimmed); else clearKey();
+        refreshKeyUI();
+      }
+    });
+    q('#clearKeyBtn').addEventListener('click', () => { clearKey(); refreshKeyUI(); });
 
-    if (paging.items.length === 0) {
-      q('#filingsBody').innerHTML = '<span class="muted">No filings found.</span>';
-    } else {
-      q('#filingsBody').innerHTML = `
-        <table>
-          <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Doc</th></tr></thead>
-          <tbody>
-            ${paging.items.map(it => `
-              <tr>
-                <td>${it.date || ''}</td>
-                <td>${formatFilingDescription(it)}</td>
-                <td><span class="pill">${it.category || ''}</span></td>
-                <td>${it.links?.document_metadata ? `${it.links.document_metadata}View ↗</a>` : ''}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-    }
-    const more = paging.start < paging.total;
-    q('#moreBtn').style.display = more ? 'inline-block' : 'none';
-    q('#pagingInfo').textContent = paging.total ? `Showing ${paging.items.length} of ${paging.total}` : '';
+    q('#themeToggleBtn').addEventListener('click', () => {
+      const cur = parseRoute().theme;
+      const next = nextTheme(cur);
+      setThemeViaUrl(next);
+      q('#themeToggleBtn').textContent = next === 'dark' ? 'Toggle dark (now dark)' : (next === 'light' ? 'Toggle dark (now light)' : 'Toggle dark (now auto)');
+    });
 
-  } catch (err) {
-    console.error(err);
-    const msg = String(err.message || '');
-    if (msg.includes('401')) showErr('Auth failed. Check your API key and domain settings (JavaScript domains).');
-    else if (msg.includes('CORS')) showErr('CORS blocked. Host this via GitHub Pages or localhost and add your origin in JavaScript domains.');
-    else showErr(msg);
-  } finally {
-    setBusy(false);
-  }
-}
+    // Handle browser nav
+    window.addEventListener('popstate', () => loadOverviewFromUrl());
 
-/** UI handlers */
-q('#fetchBtn').addEventListener('click', () => {
-  const n = q('#companyNumber').value.trim();
-  if (!n) return showErr('Please enter a company number.');
-  fetchAll(n, false);
-});
-q('#companyNumber').addEventListener('keydown', e => { if (e.key==='Enter') q('#fetchBtn').click(); });
-q('#moreBtn').addEventListener('click', () => fetchAll(paging.company, true));
-
-/** Footer API key actions (prompt + clear) */
-q('#setKeyBtn').addEventListener('click', () => {
-  const current = getKey();
-  const entered = prompt('Enter your Companies House REST API key:', current || '');
-  if (entered !== null) {
-    const trimmed = entered.trim();
-    if (trimmed) setKey(trimmed); else clearKey();
+    // Init
     refreshKeyUI();
-  }
-});
-q('#clearKeyBtn').addEventListener('click', () => { clearKey(); refreshKeyUI(); });
-refreshKeyUI();
-
-/** Theme toggle */
-function applyTheme(theme) {
-  if (theme === 'dark') {
-    document.documentElement.setAttribute('data-theme','dark');
-    q('#themeBtn').textContent = 'Dark mode: On';
-  } else if (theme === 'light') {
-    document.documentElement.setAttribute('data-theme','light');
-    q('#themeBtn').textContent = 'Dark mode: Off';
-  } else {
-    // auto (system)
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-    q('#themeBtn').textContent = `Dark mode: ${prefersDark ? 'On' : 'Off'}`;
-  }
-}
-function initTheme() {
-  const saved = localStorage.getItem(THEME_KEY);
-  applyTheme(saved || 'auto');
-}
-q('#themeBtn').addEventListener('click', () => {
-  const current = document.documentElement.getAttribute('data-theme');
-  // cycle: auto -> dark -> light -> auto
-  const saved = localStorage.getItem(THEME_KEY) || 'auto';
-  const next = saved === 'auto' ? 'dark' : (saved === 'dark' ? 'light' : 'auto');
-  localStorage.setItem(THEME_KEY, next);
-  applyTheme(next);
-});
-initTheme();
-</script>
+    loadOverviewFromUrl();
+  </script>
 </body>
 </html>
