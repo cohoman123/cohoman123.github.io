@@ -114,6 +114,13 @@
   </footer>
 
   <script>
+    // Support GitHub Pages redirect from 404.html
+    const params = new URLSearchParams(location.search);
+    if (params.has('redirect')) {
+      const redirectedPath = params.get('redirect');
+      history.replaceState(null, '', redirectedPath);
+    }
+    
     /** *********************
      * CONFIG
      * **********************/
@@ -147,7 +154,7 @@
       return [addr.premises, addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country]
         .filter(Boolean).join(', ');
     }
-
+    
     /** Theme control from URL: /{number}/dark|light|auto? */
     function parseRoute() {
       const parts = location.pathname.replace(/^\/+/, '').split('/').filter(Boolean);
