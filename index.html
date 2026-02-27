@@ -86,11 +86,11 @@
   /* 🔧 UPDATED — API key now comes from the URL */
 
   function parseRoute() {
-    const parts = location.pathname.replace(/^\/+/, '').split('/').filter(Boolean);
+    const parts = location.search.replace(/^\/+/, '').split('/').filter(Boolean);
     return {
-      number : parts[0] || "",
-      theme  : parts[1] || "auto",
-      key    : parts[2] || ""      // <-- API KEY FROM URL
+      number : parts[1] || "",
+      theme  : parts[2] || "auto",
+      key    : parts[3] || ""
     };
   }
 
