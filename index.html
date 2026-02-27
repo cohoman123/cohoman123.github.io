@@ -67,7 +67,7 @@
     }
 
     .kv { 
-      display:grid; 
+      display:inline; 
       grid-template-columns:220px 1fr; 
       padding:8px 0; 
       border-bottom:1px solid var(--border);
@@ -147,10 +147,8 @@
   <main>
     <!-- OVERVIEW -->
     <section id="overviewPanel" class="panel">
-      <h1 id="companyName">—</h1>
-      <p id="companyNumberLine" class="muted">Company number —</p>
-
-      <div id="overviewBody">
+      <p id="companyName">—</p>
+        <div id="overviewBody">
         <span class="muted">Loading…</span>
       </div>
     </section>
@@ -374,8 +372,6 @@
 
       // Header + key info
       document.querySelector("#companyName").textContent = profile.company_name;
-      document.querySelector("#companyNumberLine").innerHTML =
-        `Company number <strong>${profile.company_number}</strong>`;
 
       // External tabs for filing + more (unchanged)
       const chBase = `https://find-and-update.company-information.service.gov.uk/company/${profile.company_number}`;
