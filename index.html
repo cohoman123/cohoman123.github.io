@@ -6,64 +6,149 @@
   <title>Companies House — Overview</title>
 
   <style>
-    /* (Styles unchanged except header removed; tabs moved up) */
+    /* ========= Compact styling with borders ========= */
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f8;
+      --panel-bg: #fff;
+      --text: #111;
+      --muted: #666;
+      --border: #d9d9d9;
+      --tab-bg: #ececec;
+      --tab-active: #fff;
+      --accent: #0a7f46;
+    }
+    [data-theme="dark"] :root,
+    [data-theme="dark"] {
+      --bg:#111;
+      --panel-bg:#1a1a1a;
+      --text:#f2f2f2;
+      --muted:#bdbdbd;
+      --border:#2b2b2b;
+      --tab-bg:#222;
+      --tab-active:#1a1a1a;
+      --accent:#4fd08c;
+    }
 
-    body { margin:0; font-family:system-ui,-apple-system,Segoe UI; }
-    main { padding:24px 18px 96px; max-width:1100px; margin:auto; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color: var(--text); background: var(--bg);}
+    main { padding:16px 14px 88px; max-width:1100px; margin:auto; }
 
     .tabs {
       display:flex;
-      gap:8px;
-      border-bottom:1px solid #ccc;
-      padding:12px 18px;
-      background:#f0f0f0;
+      gap:6px;
+      border-bottom:1px solid var(--border);
+      padding:8px 12px;
+      background:var(--tab-bg);
       position:sticky;
       top:0;
       z-index:10;
     }
     .tab {
-      padding:8px 12px;
+      padding:6px 10px;
       border-radius:6px 6px 0 0;
-      background:#e5e5e5;
+      background:var(--tab-bg);
       text-decoration:none;
       font-weight:700;
-      color:#111;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-bottom:none;
+      cursor:pointer;
+      user-select:none;
     }
     .tab[aria-current="page"] {
-      background:#fff;
-      border-bottom:2px solid #0a7f46;
+      background:var(--tab-active);
+      border-bottom:2px solid var(--accent);
     }
 
-    .panel { background:#fff; border-radius:10px; padding:16px; margin-top:24px; }
+    .panel {
+      background:var(--panel-bg);
+      border-radius:8px;
+      padding:12px;
+      margin-top:14px;
+      border:1px solid var(--border);
+    }
 
-    .kv { display:grid; grid-template-columns:220px 1fr; padding:6px 0; }
+    .kv { 
+      display:grid; 
+      grid-template-columns:220px 1fr; 
+      padding:8px 0; 
+      border-bottom:1px solid var(--border);
+    }
+    .kv:last-child { border-bottom:none; }
 
-    .muted { color:#666; }
+    .muted { color:var(--muted); }
+
+    .h2ish {
+      margin:0 0 8px;
+      font-size:1.05rem;
+      font-weight:800;
+      border-bottom:1px solid var(--border);
+      padding-bottom:6px;
+    }
+
+    .list {
+      margin:0; padding:0; list-style:none;
+      border:1px solid var(--border);
+      border-radius:6px;
+      overflow:hidden;
+    }
+    .list > li {
+      padding:10px 12px;
+      border-bottom:1px solid var(--border);
+      display:grid;
+      grid-template-columns: minmax(220px, 320px) 1fr;
+      gap:12px;
+    }
+    .list > li:last-child { border-bottom:none; }
+
+    .badge {
+      display:inline-block;
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:2px 8px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .grid-2 {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 740px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .kv { grid-template-columns: 1fr; }
+      .list > li { grid-template-columns: 1fr; }
+    }
 
     footer.key-footer {
       position:fixed; bottom:0; left:0; right:0;
       padding:8px 12px;
-      background:#fff;
-      border-top:1px solid #ddd;
+      background:var(--panel-bg);
+      border-top:1px solid var(--border);
       display:flex; justify-content:flex-end; gap:8px;
     }
+
+    .hidden { display:none !important; }
+    .loading { color:var(--muted); font-style:italic; }
+    .error { color:#b00020; font-weight:700; }
   </style>
 </head>
 
 <body>
 
-  <!-- 🔧 UPDATED — Tabs moved above everything -->
+  <!-- Tabs -->
   <nav class="tabs" aria-label="Company sections">
-    <a class="tab" aria-current="page">Overview</a>
+    <a class="tab" id="overviewTab" aria-current="page">Overview</a>
     <a class="tab" id="filingTab" target="_blank">Filing history</a>
-    <a class="tab" id="peopleTab" target="_blank">People</a>
+    <a class="tab" id="peopleTab">People</a>
+    <!-- Insolvency tab will be injected when applicable -->
     <a class="tab" id="moreTab" target="_blank">More</a>
   </nav>
 
   <main>
-
-    <!-- 🔧 UPDATED — Company name + number moved HERE into overview panel -->
-    <section class="panel">
+    <!-- OVERVIEW -->
+    <section id="overviewPanel" class="panel">
       <h1 id="companyName">—</h1>
       <p id="companyNumberLine" class="muted">Company number —</p>
 
@@ -72,16 +157,32 @@
       </div>
     </section>
 
-    <p id="error" style="color:#b00020;font-weight:bold;"></p>
+    <!-- PEOPLE (internal) -->
+    <section id="peoplePanel" class="panel hidden" aria-labelledby="peopleTab">
+      <h2 class="h2ish">People</h2>
+      <div id="peopleBody" class="grid-2">
+        <div>
+          <h3 class="h2ish" style="font-size:1rem;">Active officers</h3>
+          <div id="peopleActive"><span class="loading">—</span></div>
+        </div>
+        <div>
+          <h3 class="h2ish" style="font-size:1rem;">Resigned officers</h3>
+          <div id="peopleResigned"><span class="loading">—</span></div>
+        </div>
+      </div>
+    </section>
 
+    <!-- INSOLVENCY (conditionally created + shown when available) -->
+    <section id="insolvencyPanel" class="panel hidden" aria-labelledby="insolvencyTab">
+      <h2 class="h2ish">Insolvency</h2>
+      <div id="insolvencyBody"><span class="loading">—</span></div>
+    </section>
+
+    <p id="error" class="error"></p>
   </main>
 
-  <!-- 🔧 UPDATED — API key is no longer set manually -->
-  <footer class="key-footer">
-    <span class="muted" id="keyStatus">API key read from URL.</span>
-  </footer>
-
 <script>
+  /* ================= Utilities ================= */
 
   /* 🔧 UPDATED — API key now comes from the URL */
 
@@ -107,13 +208,164 @@
     const res = await fetch("https://api.company-information.service.gov.uk" + path, {
       headers: { "Authorization": "Basic " + btoa(key + ":") }
     });
-    if (!res.ok) throw new Error(res.status + " " + res.statusText);
+    if (!res.ok) throw new Error(res.status + " " + res.statusText + " — " + path);
     return res.json();
   }
 
+  function setActiveTab(tabEl, panelEl) {
+    // Update aria-current
+    for (const t of document.querySelectorAll('.tab')) {
+      if (t === tabEl) t.setAttribute('aria-current','page');
+      else t.removeAttribute('aria-current');
+    }
+    // Show/hide panels
+    for (const s of [ '#overviewPanel', '#peoplePanel', '#insolvencyPanel' ]) {
+      const el = document.querySelector(s);
+      if (!el) continue;
+      if (el === panelEl) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    }
+  }
+
+  function safe(txt) {
+    if (txt === null || txt === undefined) return "";
+    return String(txt)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;');
+  }
+
+  function formatDate(d) {
+    return d ? d : "—";
+  }
+
+  /* ================= Feature: People ================= */
+
+  let peopleLoaded = false;
+
+  async function loadPeople(number, key) {
+    const activeMount   = document.querySelector('#peopleActive');
+    const resignedMount = document.querySelector('#peopleResigned');
+    activeMount.innerHTML = '<span class="loading">Loading…</span>';
+    resignedMount.innerHTML = '<span class="loading">Loading…</span>';
+
+    try {
+      // Officers list (internal tab instead of external navigation)
+      // Typical fields: name, officer_role, appointed_on, resigned_on, date_of_birth, nationality, occupation.
+      const data = await chGet(`/company/${number}/officers?items_per_page=50`, key);
+      const items = Array.isArray(data.items) ? data.items : [];
+
+      const active = items.filter(i => !i.resigned_on);
+      const resig  = items.filter(i =>  i.resigned_on);
+
+      function renderList(list) {
+        if (!list.length) return '<p class="muted">No entries.</p>';
+        return `
+          <ul class="list">
+            ${list.map(i => `
+              <li>
+                <div>
+                  <div style="font-weight:700;">${safe(i.name || '—')}</div>
+                  <div class="muted">
+                    <span class="badge">${safe(i.officer_role || 'officer')}</span>
+                    ${i.nationality ? ` · ${safe(i.nationality)}` : ""}
+                    ${i.occupation ? ` · ${safe(i.occupation)}` : ""}
+                  </div>
+                </div>
+                <div>
+                  <div class="kv"><div class="muted">Appointed</div><div>${formatDate(i.appointed_on)}</div></div>
+                  ${i.resigned_on ? `<div class="kv"><div class="muted">Resigned</div><div>${formatDate(i.resigned_on)}</div></div>` : ""}
+                  ${i.date_of_birth ? `<div class="kv"><div class="muted">Date of birth</div><div>${safe([i.date_of_birth.month, i.date_of_birth.year].filter(Boolean).join("/") || '—')}</div></div>` : ""}
+                  ${i.address ? `<div class="kv"><div class="muted">Address</div><div>${safe(Object.values(i.address).filter(Boolean).join(", "))}</div></div>` : ""}
+                </div>
+              </li>
+            `).join('')}
+          </ul>
+        `;
+      }
+
+      activeMount.innerHTML   = renderList(active);
+      resignedMount.innerHTML = renderList(resig);
+      peopleLoaded = true;
+    } catch (err) {
+      activeMount.innerHTML = `<span class="error">${safe(err.message)}</span>`;
+      resignedMount.innerHTML = '';
+    }
+  }
+
+  /* ================= Feature: Insolvency ================= */
+
+  let insolvencyLoaded = false;
+
+  async function loadInsolvency(number, key) {
+    const mount = document.querySelector('#insolvencyBody');
+    mount.innerHTML = '<span class="loading">Loading…</span>';
+
+    try {
+      // https://api.company-information.service.gov.uk/company/{company_number}/insolvency
+      const data = await chGet(`/company/${number}/insolvency`, key);
+
+      const cases = Array.isArray(data.cases) ? data.cases : [];
+      if (!cases.length) {
+        mount.innerHTML = '<p class="muted">No insolvency cases found.</p>';
+        return;
+      }
+
+      function renderPractitioners(pracs) {
+        if (!Array.isArray(pracs) || !pracs.length) return '<p class="muted" style="margin:0;">No practitioners listed.</p>';
+        return `
+          <ul class="list">
+            ${pracs.map(p => `
+              <li>
+                <div style="font-weight:700;">${safe(p.name || '—')}</div>
+                <div>
+                  ${p.address ? `<div class="kv"><div class="muted">Address</div><div>${safe(Object.values(p.address).filter(Boolean).join(", "))}</div></div>` : ""}
+                  ${p.ip_number ? `<div class="kv"><div class="muted">IP number</div><div>${safe(p.ip_number)}</div></div>` : ""}
+                  ${p.appointed_on ? `<div class="kv"><div class="muted">Appointed on</div><div>${safe(p.appointed_on)}</div></div>` : ""}
+                </div>
+              </li>
+            `).join('')}
+          </ul>
+        `;
+      }
+
+      mount.innerHTML = cases.map(c => `
+        <section class="panel" style="margin-top:12px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <span class="badge">${safe(c.case_type || 'case')}</span>
+            ${c.status ? `<span class="badge" title="Status">${safe(c.status)}</span>` : ""}
+            ${c.case_number ? `<span class="badge" title="Case number">#${safe(c.case_number)}</span>` : ""}
+          </div>
+
+          ${c.notes ? `<p class="muted" style="margin:6px 0 8px;">${safe(c.notes)}</p>` : ''}
+
+          <div class="grid-2">
+            <div>
+              <h3 class="h2ish" style="font-size:1rem;">Timeline</h3>
+              <div>
+                ${c.dates && c.dates.length ? c.dates.map(d => `
+                  <div class="kv"><div class="muted">${safe(d.type || 'Event')}</div><div>${formatDate(d.date)}</div></div>
+                `).join('') : '<p class="muted" style="margin:0;">No timeline available.</p>'}
+              </div>
+            </div>
+            <div>
+              <h3 class="h2ish" style="font-size:1rem;">Practitioners</h3>
+              ${renderPractitioners(c.practitioners)}
+            </div>
+          </div>
+        </section>
+      `).join('');
+      insolvencyLoaded = true;
+
+    } catch (err) {
+      mount.innerHTML = `<span class="error">${safe(err.message)}</span>`;
+    }
+  }
+
+  /* ================= Overview + Tabs wiring ================= */
+
   async function loadOverviewFromUrl() {
     const { number, theme, key } = parseRoute();
-
     applyTheme(theme);
 
     if (!number) {
@@ -125,20 +377,69 @@
     try {
       const profile = await chGet(`/company/${number}`, key);
 
+      // Header + key info
       document.querySelector("#companyName").textContent = profile.company_name;
       document.querySelector("#companyNumberLine").innerHTML =
         `Company number <strong>${profile.company_number}</strong>`;
 
+      // External tabs for filing + more (unchanged)
       const chBase = `https://find-and-update.company-information.service.gov.uk/company/${profile.company_number}`;
       document.querySelector("#filingTab").href = `${chBase}/filing-history`;
-      document.querySelector("#peopleTab").href = `${chBase}/officers`;
       document.querySelector("#moreTab").href   = chBase;
 
+      // Overview body (compact kv rows with borders)
       document.querySelector("#overviewBody").innerHTML = `
-        <div class="kv"><div class="muted">Status</div><div>${profile.company_status}</div></div>
-        <div class="kv"><div class="muted">Type</div><div>${profile.type}</div></div>
-        <div class="kv"><div class="muted">Incorporated</div><div>${profile.date_of_creation}</div></div>
+        <div class="kv"><div class="muted">Status</div><div>${safe(profile.company_status)}</div></div>
+        <div class="kv"><div class="muted">Type</div><div>${safe(profile.type)}</div></div>
+        <div class="kv"><div class="muted">Incorporated</div><div>${safe(profile.date_of_creation)}</div></div>
+        ${profile.registered_office_address ? `
+        <div class="kv"><div class="muted">Registered office</div><div>${safe(Object.values(profile.registered_office_address).filter(Boolean).join(", "))}</div></div>
+        ` : ``}
+        ${profile.sic_codes && profile.sic_codes.length ? `
+        <div class="kv"><div class="muted">SIC</div><div>${profile.sic_codes.map(c => `<span class="badge">${safe(c)}</span>`).join(' ')}</div></div>
+        ` : ``}
       `;
+
+      // Tabs behaviour
+      const overviewTab = document.querySelector('#overviewTab');
+      const peopleTab   = document.querySelector('#peopleTab');
+
+      overviewTab.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveTab(overviewTab, document.querySelector('#overviewPanel'));
+      });
+
+      peopleTab.addEventListener('click', async (e) => {
+        e.preventDefault();
+        setActiveTab(peopleTab, document.querySelector('#peoplePanel'));
+        if (!peopleLoaded) await loadPeople(profile.company_number, key);
+      });
+
+      // Conditionally add Insolvency tab
+      const looksInsolvent = !!profile.has_insolvency_history ||
+        (typeof profile.company_status === 'string' && /liquidation|insolvency|insolvent|administration|receivership/i.test(profile.company_status));
+
+      if (looksInsolvent) {
+        let insTab = document.querySelector('#insolvencyTab');
+        if (!insTab) {
+          insTab = document.createElement('a');
+          insTab.className = 'tab';
+          insTab.id = 'insolvencyTab';
+          insTab.textContent = 'Insolvency';
+          document.querySelector('.tabs').insertBefore(insTab, document.querySelector('#moreTab'));
+        }
+        insTab.addEventListener('click', async (e) => {
+          e.preventDefault();
+          setActiveTab(insTab, document.querySelector('#insolvencyPanel'));
+          if (!insolvencyLoaded) await loadInsolvency(profile.company_number, key);
+        });
+      } else {
+        // If no insolvency, ensure panel is hidden
+        document.querySelector('#insolvencyPanel').classList.add('hidden');
+      }
+
+      // Default to Overview active
+      setActiveTab(overviewTab, document.querySelector('#overviewPanel'));
 
     } catch (err) {
       document.querySelector("#error").textContent = err.message;
@@ -148,7 +449,6 @@
   }
 
   loadOverviewFromUrl();
-
 </script>
 
 </body>
