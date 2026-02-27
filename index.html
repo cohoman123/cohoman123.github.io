@@ -267,15 +267,12 @@
                   <div style="font-weight:700;">${safe(i.name || '—')}</div>
                   <div class="muted">
                     <span class="badge">${safe(i.officer_role || 'officer')}</span>
-                    ${i.nationality ? ` · ${safe(i.nationality)}` : ""}
                     ${i.occupation ? ` · ${safe(i.occupation)}` : ""}
                   </div>
                 </div>
                 <div>
                   <div class="kv"><div class="muted">Appointed</div><div>${formatDate(i.appointed_on)}</div></div>
                   ${i.resigned_on ? `<div class="kv"><div class="muted">Resigned</div><div>${formatDate(i.resigned_on)}</div></div>` : ""}
-                  ${i.date_of_birth ? `<div class="kv"><div class="muted">Date of birth</div><div>${safe([i.date_of_birth.month, i.date_of_birth.year].filter(Boolean).join("/") || '—')}</div></div>` : ""}
-                  ${i.address ? `<div class="kv"><div class="muted">Address</div><div>${safe(Object.values(i.address).filter(Boolean).join(", "))}</div></div>` : ""}
                 </div>
               </li>
             `).join('')}
@@ -393,9 +390,6 @@
         <div class="kv"><div class="muted">Incorporated</div><div>${safe(profile.date_of_creation)}</div></div>
         ${profile.registered_office_address ? `
         <div class="kv"><div class="muted">Registered office</div><div>${safe(Object.values(profile.registered_office_address).filter(Boolean).join(", "))}</div></div>
-        ` : ``}
-        ${profile.sic_codes && profile.sic_codes.length ? `
-        <div class="kv"><div class="muted">SIC</div><div>${profile.sic_codes.map(c => `<span class="badge">${safe(c)}</span>`).join(' ')}</div></div>
         ` : ``}
       `;
 
