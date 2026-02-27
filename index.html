@@ -86,7 +86,8 @@
   /* 🔧 UPDATED — API key now comes from the URL */
 
   function parseRoute() {
-    const parts = location.search.replace(/^\/+/, '').split('/').filter(Boolean);
+    const path = decodeURIComponent(location.search)
+    const parts = path.split('/');
     return {
       number : parts[1] || "",
       theme  : parts[2] || "auto",
