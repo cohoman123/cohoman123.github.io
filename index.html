@@ -379,11 +379,11 @@
 
       // Overview body (compact kv rows with borders)
       document.querySelector("#overviewBody").innerHTML = `
-        <div class="kv"><div class="muted">Status: </div><div>${safe(profile.company_status)}</div></div>
-        <div class="kv"><div class="muted">Type: </div><div>${safe(profile.type)}</div></div>
-        <div class="kv"><div class="muted">Incorporated: </div><div>${safe(profile.date_of_creation)}</div></div>
+        <div class="kv"><span class="muted">Status:</span><span>${safe(profile.company_status)}</span></div>
+        <div class="kv"><span class="muted">Type: </span><span>${safe(profile.type)}</span></div>
+        <div class="kv"><span class="muted">Incorporated: </span><span>${safe(profile.date_of_creation)}</span></div>
         ${profile.registered_office_address ? `
-        <div class="kv"><div class="muted">Registered office: </div><div>${safe(Object.values(profile.registered_office_address).filter(Boolean).join(", "))}</div></div>
+        <div class="kv"><span class="muted">Registered office: </span><span>${safe(Object.values(profile.registered_office_address).filter(Boolean).join(", "))}</span></div>
         ` : ``}
       `;
 
