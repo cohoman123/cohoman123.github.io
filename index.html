@@ -407,57 +407,92 @@
       ? d.toLocaleDateString("en-GB")
       : "—";
   }
-
-  // Build periods from filings, split extended periods, cut pre-2010
+  
   function buildAccountingPeriods(accounts) {
+  
+    // First extract: true start/end, dormant
     const extracted = accounts
       .map(f => {
-        const end = toDate(f.date); // filing item's 'date' is the made-up-to / end date
-        let start = null;
-
+        const end = getTruePeriodEnd(f);
+        let start;
+  
         if (f.description_values?.period_start_on) {
           start = toDate(f.description_values.period_start_on);
         } else {
-          // Infer 12-month period when start is not provided
-          const inferred = new Date(end);
-          inferred.setFullYear(inferred.getFullYear() - 1);
-          inferred.setDate(inferred.getDate() + 1);
-          start = inferred;
+          // Infer 12-month period if start is missing
+          start = new Date(end);
+          start.setFullYear(start.getFullYear() - 1);
+          start.setDate(start.getDate() + 1);
         }
-
-        // Dormant?
+  
         const isDormant =
           /dormant/i.test(f.description || "") ||
           /dormant/i.test(f.type || "");
-
+  
         return { start, end, dormant: isDormant };
       })
-      .sort((a, b) => a.start - b.start);
-
+      .sort((a, b) => a.end - b.end);  // IMPORTANT: sort by TRUE end dates
+  
+  
     const periods = [];
-    for (const { start, end, dormant } of extracted) {
-      const days = Math.round((end - start) / (1000 * 60 * 60 * 24));
-
-      if (days > 366) {
-        // Extended period -> split into 12-month (start..start+12m-1d) + balance (next day..end)
-        const firstEnd = new Date(start);
-        firstEnd.setFullYear(firstEnd.getFullYear() + 1);
-        firstEnd.setDate(firstEnd.getDate() - 1);
-
-        const secondStart = new Date(firstEnd);
-        secondStart.setDate(secondStart.getDate() + 1);
-
-        periods.push({ start, end: firstEnd, dormant });
-        periods.push({ start: secondStart, end, dormant });
-      } else {
+  
+    for (const entry of extracted) {
+      const { start, end, dormant } = entry;
+  
+      // Duration
+      const days = Math.round((end - start) / 86400000);
+  
+      // -------------- SHORTENED period (< 11 months) ----------------
+      if (days < 335) {
         periods.push({ start, end, dormant });
+        continue;
+      }
+  
+      // -------------- NORMAL period (≈ 12 months) ----------------
+      if (days <= 366) {
+        periods.push({ start, end, dormant });
+        continue;
+      }
+  
+      // -------------- EXTENDED period (> 12 months) ----------------
+      // First 12-month period
+      const firstEnd = new Date(start);
+      firstEnd.setFullYear(firstEnd.getFullYear() + 1);
+      firstEnd.setDate(firstEnd.getDate() - 1);
+  
+      periods.push({ start, end: firstEnd, dormant });
+  
+      // Stub period (remaining)
+      const stubStart = new Date(firstEnd);
+      stubStart.setDate(stubStart.getDate() + 1);
+  
+      periods.push({ start: stubStart, end, dormant });
+    }
+  
+    // -------------- ENSURE PERIODS ARE SEQUENTIAL ----------------
+    for (let i = 1; i < periods.length; i++) {
+      const prev = periods[i - 1];
+      const curr = periods[i];
+  
+      const expectedStart = new Date(prev.end);
+      expectedStart.setDate(expectedStart.getDate() + 1);
+  
+      if (curr.start.getTime() !== expectedStart.getTime()) {
+        // Fix the start to ensure continuity
+        const duration = Math.round((curr.end - curr.start) / 86400000);
+        curr.start = expectedStart;
+  
+        // Maintain the period length
+        const correctedEnd = new Date(expectedStart);
+        correctedEnd.setDate(correctedEnd.getDate() + duration);
+        curr.end = correctedEnd;
       }
     }
-
-    // Exclude pre-2010
+  
+    // Remove anything pre‑2010
     return periods.filter(p => p.end.getFullYear() >= 2010);
   }
-
+  
   // Extend with future 12‑month periods until a target end year (inclusive)
   function addFuturePeriodsUntilYear(periods, targetYearEnd = 2028) {
     if (!periods.length) return periods;
