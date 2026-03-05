@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en" data-theme="auto">
 <head>
@@ -9,7 +10,7 @@
     /* ========= Compact styling with borders ========= */
     :root {
       color-scheme: light dark;
-      --bg: #f6f7f8;
+      --bg: #f3f2f1;
       --panel-bg: #fff;
       --text: #111;
       --muted: #666;
@@ -20,18 +21,28 @@
     }
     [data-theme="dark"] :root,
     [data-theme="dark"] {
-      --bg:#111;
-      --panel-bg:#1a1a1a;
+      --bg:#0b0c0c;
+      --panel-bg:#1a1d1e;
       --text:#f2f2f2;
       --muted:#bdbdbd;
       --border:#2b2b2b;
-      --tab-bg:#222;
-      --tab-active:#1a1a1a;
+      --tab-bg:#2a2f31;
+      --tab-active:#2f84c7;
       --accent:#4fd08c;
     }
 
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color: var(--text); background: var(--bg);}
+    html {
+      padding: 6px;
+      background:var(--tab-bg);
+    }
+
+    body { 
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color: var(--text);
+      background: var(--bg);}
     main { max-width:1100px; margin:auto; }
+    
     h3 { display: inline }
 
     .tabs {
@@ -41,10 +52,10 @@
       position:sticky;
       top:0;
       z-index:10;
+      gap: 5px;
     }
     .tab {
       padding:6px 10px;
-      border-radius:6px 6px 0 0;
       background:var(--tab-bg);
       text-decoration:none;
       font-weight:700;
@@ -62,8 +73,6 @@
     .panel {
       background:var(--panel-bg);
       border-radius:8px;
-      padding:5px;
-      margin-top:14px;
     }
 
     .kv { 
@@ -139,15 +148,14 @@
     <a class="tab" id="overviewTab" aria-current="page">Overview</a>
     <a class="tab" id="filingTab" target="_blank">Filing history</a>
     <a class="tab" id="peopleTab">People</a>
-    <!-- Insolvency tab will be injected when applicable -->
+    <a class="tab" id="dapdTab">DAPD Est.</a>
     <a class="tab" id="moreTab" target="_blank">More</a>
   </nav>
 
   <main>
     <!-- OVERVIEW -->
     <section id="overviewPanel" class="panel">
-      <p id="companyName">—</p>
-        <div id="overviewBody">
+      <div id="overviewBody">
         <span class="muted">Loading…</span>
       </div>
     </section>
@@ -166,6 +174,14 @@
         </div>
       </div>
     </section>
+
+
+    <!-- DAPD EST. (internal) -->
+    <section id="dapdPanel" class="panel hidden" aria-labelledby="dapdTab">
+      <h2 class="h2ish">Derived Accounting Period Display (Estimated)</h2>
+      <div id="dapdBody"><span class="loading">—</span></div>
+    </section>
+
 
     <!-- INSOLVENCY (conditionally created + shown when available) -->
     <section id="insolvencyPanel" class="panel hidden" aria-labelledby="insolvencyTab">
@@ -199,12 +215,65 @@
   }
 
   async function chGet(path, key) {
-    if (!key) throw new Error("No API key found in URL.");
-    const res = await fetch("https://api.company-information.service.gov.uk" + path, {
-      headers: { "Authorization": "Basic " + btoa(key + ":") }
-    });
-    if (!res.ok) throw new Error(res.status + " " + res.statusText + " — " + path);
-    return res.json();
+    return {
+    "accounts": {
+        "accounting_reference_date": {
+            "day": "31",
+            "month": "12"
+        },
+        "last_accounts": {
+            "made_up_to": "2020-12-31",
+            "period_end_on": "2020-12-31",
+            "period_start_on": "2020-01-01",
+            "type": "total-exemption-full"
+        },
+        "next_accounts": {
+            "due_on": "2022-12-31",
+            "overdue": true,
+            "period_end_on": "2021-12-31",
+            "period_start_on": "2021-01-01"
+        },
+        "next_due": "2022-12-31",
+        "next_made_up_to": "2021-12-31",
+        "overdue": true
+    },
+    "can_file": true,
+    "company_name": "RHINO INDUSTRIAL POWER LTD",
+    "company_number": "09910251",
+    "company_status": "liquidation",
+    "confirmation_statement": {
+        "last_made_up_to": "2022-12-10",
+        "next_due": "2023-12-24",
+        "next_made_up_to": "2023-12-10",
+        "overdue": true
+    },
+    "date_of_creation": "2015-12-10",
+    "etag": "7d508dbbdaaa4db599e54f816e3b9fcdb27da6e3",
+    "has_charges": false,
+    "has_insolvency_history": true,
+    "jurisdiction": "england-wales",
+    "links": {
+        "persons_with_significant_control": "/company/09910251/persons-with-significant-control",
+        "self": "/company/09910251",
+        "filing_history": "/company/09910251/filing-history",
+        "insolvency": "/company/09910251/insolvency",
+        "officers": "/company/09910251/officers"
+    },
+    "registered_office_address": {
+        "address_line_1": "13 Ensign Business Centre",
+        "address_line_2": "Westwood Way",
+        "locality": "Coventry",
+        "postal_code": "CV4 8JA",
+        "region": "West Midlands"
+    },
+    "registered_office_is_in_dispute": false,
+    "sic_codes": [
+        "81229"
+    ],
+    "type": "ltd",
+    "undeliverable_registered_office_address": false,
+    "has_super_secure_pscs": false
+}
   }
 
   function setActiveTab(tabEl, panelEl) {
@@ -234,6 +303,23 @@
     return d ? d : "—";
   }
 
+/* ================= Feature: DAPD Est. ================= */
+
+  let dapdLoaded = false;
+
+  async function loadDAPD(number, key) {
+    const mount = document.querySelector('#dapdBody');
+    mount.innerHTML = '<span class="loading">Loading…</span>';
+
+    try {
+      const html = await getAccountingPeriodHTML(number, key);
+      mount.innerHTML = html;
+      dapdLoaded = true;
+    } catch (err) {
+      mount.innerHTML = `<span class="error">${safe(err.message || 'Unable to build DAPD view')}</span>`;
+    }
+  }
+
   /* ================= Feature: People ================= */
 
   let peopleLoaded = false;
@@ -245,8 +331,6 @@
     resignedMount.innerHTML = '<span class="loading">Loading…</span>';
 
     try {
-      // Officers list (internal tab instead of external navigation)
-      // Typical fields: name, officer_role, appointed_on, resigned_on, date_of_birth, nationality, occupation.
       const data = await chGet(`/company/${number}/officers?items_per_page=50`, key);
       const items = Array.isArray(data.items) ? data.items : [];
 
@@ -294,7 +378,6 @@
     mount.innerHTML = '<span class="loading">Loading…</span>';
 
     try {
-      // https://api.company-information.service.gov.uk/company/{company_number}/insolvency
       const data = await chGet(`/company/${number}/insolvency`, key);
 
       const cases = Array.isArray(data.cases) ? data.cases : [];
@@ -354,32 +437,196 @@
     }
   }
 
+  
+  // -----------------------------------
+  // DAPD (Derived Accounting Period Display) — core helpers
+  // -----------------------------------
+  async function getCompanyAccountsFilings(companyNumber, key) {
+    const path = `/company/${companyNumber}/filing-history?items_per_page=200`;
+    const data = await chGet(path, key);
+    if (!data.items) return [];
+    return data.items.filter(item => item.category === "accounts");
+  }
+
+  // Parse an ISO date (YYYY-MM-DD) into a Date
+  function toDate(str) {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // Format Date -> DD/MM/YYYY without clobbering your other UI formatter
+  function formatDateGB(d) {
+    return d instanceof Date && !Number.isNaN(d.valueOf())
+      ? d.toLocaleDateString("en-GB")
+      : "—";
+  }
+
+  // Build periods from filings, split extended periods, cut pre-2010
+  function buildAccountingPeriods(accounts) {
+    const extracted = accounts
+      .map(f => {
+        const end = toDate(f.date); // filing item's 'date' is the made-up-to / end date
+        let start = null;
+
+        if (f.description_values?.period_start_on) {
+          start = toDate(f.description_values.period_start_on);
+        } else {
+          // Infer 12-month period when start is not provided
+          const inferred = new Date(end);
+          inferred.setFullYear(inferred.getFullYear() - 1);
+          inferred.setDate(inferred.getDate() + 1);
+          start = inferred;
+        }
+
+        // Dormant?
+        const isDormant =
+          /dormant/i.test(f.description || "") ||
+          /dormant/i.test(f.type || "");
+
+        return { start, end, dormant: isDormant };
+      })
+      .sort((a, b) => a.start - b.start);
+
+    const periods = [];
+    for (const { start, end, dormant } of extracted) {
+      const days = Math.round((end - start) / (1000 * 60 * 60 * 24));
+
+      if (days > 366) {
+        // Extended period -> split into 12-month (start..start+12m-1d) + balance (next day..end)
+        const firstEnd = new Date(start);
+        firstEnd.setFullYear(firstEnd.getFullYear() + 1);
+        firstEnd.setDate(firstEnd.getDate() - 1);
+
+        const secondStart = new Date(firstEnd);
+        secondStart.setDate(secondStart.getDate() + 1);
+
+        periods.push({ start, end: firstEnd, dormant });
+        periods.push({ start: secondStart, end, dormant });
+      } else {
+        periods.push({ start, end, dormant });
+      }
+    }
+
+    // Exclude pre-2010
+    return periods.filter(p => p.end.getFullYear() >= 2010);
+  }
+
+  // Extend with future 12‑month periods until a target end year (inclusive)
+  function addFuturePeriodsUntilYear(periods, targetYearEnd = 2028) {
+    if (!periods.length) return periods;
+
+    let lastEnd = periods[periods.length - 1].end;
+    while (lastEnd.getFullYear() < targetYearEnd) {
+      const nextStart = new Date(lastEnd);
+      nextStart.setDate(nextStart.getDate() + 1);
+
+      const nextEnd = new Date(nextStart);
+      nextEnd.setFullYear(nextEnd.getFullYear() + 1);
+      nextEnd.setDate(nextEnd.getDate() - 1);
+
+      periods.push({ start: nextStart, end: nextEnd, dormant: false });
+      lastEnd = nextEnd;
+    }
+    return periods;
+  }
+
+  // Render a compact table like your sample
+  function periodsToHTML(periods) {
+    const rows = periods.map(p => `
+      <tr>
+        <td style="background: yellow;">${formatDateGB(p.start)}</td>
+        <td style="background: yellow;">${formatDateGB(p.end)}</td>
+        <td style="background: yellow;">${p.dormant ? "D" : "L"}</td>
+      </tr>
+    `).join("");
+
+    return `
+      <h3 class="h2ish" style="font-size:1rem;">CURRENT DETAILS</h3>
+      <table border="1" cellpadding="6" style="border-collapse: collapse; font-family: Arial;">
+        <tr style="background: #e0e0ff; font-weight: bold;">
+          <td>Start Date</td>
+          <td>End Date</td>
+          <td>Status</td>
+        </tr>
+        ${rows || `<tr><td colspan="3" class="muted">No accounting periods found.</td></tr>`}
+      </table>
+    `;
+  }
+
+  // Build DAPD HTML (with fallback if filing-history is unavailable/empty)
+  async function getAccountingPeriodHTML(companyNumber, key) {
+    // Try filing history first
+    const filings = await getCompanyAccountsFilings(companyNumber, key);
+    let periods = buildAccountingPeriods(filings);
+
+    // Fallback: if nothing returned (e.g., new company), estimate from /company profile
+    if (!periods.length) {
+      try {
+        const profile = await chGet(`/company/${companyNumber}`, key);
+        const acc = profile?.accounts || {};
+        const last = acc.last_accounts || {};
+        const next = acc.next_accounts || {};
+
+        const seed = [];
+
+        if (last.period_start_on && last.period_end_on) {
+          seed.push({
+            start: toDate(last.period_start_on),
+            end: toDate(last.period_end_on),
+            dormant: /dormant/i.test(last.type || "")
+          });
+        } else if (last.made_up_to) {
+          const end = toDate(last.made_up_to);
+          const start = new Date(end);
+          start.setFullYear(start.getFullYear() - 1);
+          start.setDate(start.getDate() + 1);
+          seed.push({ start, end, dormant: /dormant/i.test(last.type || "") });
+        }
+
+        if (next.period_start_on && next.period_end_on) {
+          seed.push({
+            start: toDate(next.period_start_on),
+            end: toDate(next.period_end_on),
+            dormant: false
+          });
+        }
+
+        if (seed.length) periods = buildAccountingPeriods(seed);
+      } catch (_) {
+        // ignore fallback errors; UI will show “No accounting periods found.”
+      }
+    }
+
+    // Predict through 2028 as requested
+    addFuturePeriodsUntilYear(periods, 2028);
+
+    return periodsToHTML(periods);
+  }
+
   /* ================= Overview + Tabs wiring ================= */
 
   async function loadOverviewFromUrl() {
     const { number, theme, key } = parseRoute();
-    applyTheme(theme);
+    applyTheme("dark");
 
-    if (!number) {
-      document.querySelector("#overviewBody").innerHTML =
-        "<span class='muted'>Add /company/theme/apikey to URL</span>";
-      return;
-    }
+    // if (!number) {
+    //   document.querySelector("#overviewBody").innerHTML =
+    //     "<span class='muted'>Add /company/theme/apikey to URL</span>";
+    //   return;
+    // }
 
     try {
       const profile = await chGet(`/company/${number}`, key);
 
-      // Header + key info
-      document.querySelector("#companyName").textContent = profile.company_name;
-
-      // External tabs for filing + more (unchanged)
+      // External tabs for filing
       const chBase = `https://find-and-update.company-information.service.gov.uk/company/${profile.company_number}`;
       document.querySelector("#filingTab").href = `${chBase}/filing-history`;
       document.querySelector("#moreTab").href   = chBase;
 
       // Overview body (compact kv rows with borders)
       document.querySelector("#overviewBody").innerHTML = `
-        <div class="kv"><span class="muted">Status:</span><span>${safe(profile.company_status)}</span></div>
+        <div class="kv"><span class="muted">Name: </span><span>${safe(profile.company_name)}</span></div>
+        <div class="kv"><span class="muted">Status: </span><span>${safe(profile.company_status)}</span></div>
         <div class="kv"><span class="muted">Type: </span><span>${safe(profile.type)}</span></div>
         <div class="kv"><span class="muted">Incorporated: </span><span>${safe(profile.date_of_creation)}</span></div>
         ${profile.registered_office_address ? `
@@ -390,6 +637,7 @@
       // Tabs behaviour
       const overviewTab = document.querySelector('#overviewTab');
       const peopleTab   = document.querySelector('#peopleTab');
+      const dapdTab     = document.querySelector('#dapdTab');
 
       overviewTab.addEventListener('click', (e) => {
         e.preventDefault();
@@ -401,6 +649,13 @@
         setActiveTab(peopleTab, document.querySelector('#peoplePanel'));
         if (!peopleLoaded) await loadPeople(profile.company_number, key);
       });
+
+      dapdTab.addEventListener('click', async (e) => {
+        e.preventDefault();
+        setActiveTab(dapdTab, document.querySelector('#dapdPanel'));
+        if (!dapdLoaded) await loadDAPD(profile.company_number, key);
+      });
+
 
       // Conditionally add Insolvency tab
       const looksInsolvent = !!profile.has_insolvency_history ||
