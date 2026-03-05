@@ -407,6 +407,32 @@
       ? d.toLocaleDateString("en-GB")
       : "—";
   }
+
+// Extract true accounting period end date
+  function getTruePeriodEnd(filing) {
+    // 1. Direct structured data
+    if (filing.description_values?.period_end_on) {
+      return toDate(filing.description_values.period_end_on);
+    }
+
+    // 2. CH sometimes supplies "made_up_to" in description_values
+    if (filing.description_values?.made_up_to) {
+      return toDate(filing.description_values.made_up_to);
+    }
+
+    // 3. Parse the human-readable description text
+    //    e.g. "Total exemption full accounts made up to 31 December 2020"
+    const desc = filing.description || "";
+    const match = desc.match(/made up to ([0-9]{1,2} [A-Za-z]+ [0-9]{4})/i);
+
+    if (match) {
+      const parsed = new Date(match[1]); // browser can parse this fine
+      if (!isNaN(parsed)) return parsed;
+    }
+
+    // 4. LAST RESORT → fallback incorrectly to filing.date
+    return toDate(filing.date);
+  }
   
   function buildAccountingPeriods(accounts) {
   
