@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>UK Corporation Tax Accounting Period Builder</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input { padding: 8px; font-size: 14px; width: 300px; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 15px; }
+    table { margin-top: 30px; border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f2f2f2; }
+    .error { color: red; margin-top: 20px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>Corporation Tax Accounting Period Generator</h1>
+
+<label>Companies House API Key:</label>
+<input id="apiKey" type="text" placeholder="Enter API key">
+
+<label>Company Number:</label>
+<input id="companyNumber" type="text" placeholder="e.g. 01234567">
+
+<button onclick="runTool()">Generate Accounting Periods</button>
+
+<div id="error" class="error"></div>
+<div id="results"></div>
+
+
+<script>
+/* -----------------------------
+   Companies House Fetch Helper
+-------------------------------- */
+async function chGet(path, key) {
+    const res = await fetch("https://api.company-information.service.gov.uk" + path, {
+        headers: { "Authorization": "Basic " + btoa(key + ":") }
+    });
+    if (!res.ok) throw new Error(res.status + " " + res.statusText + " — " + path);
+    return res.json();
+}
+
+/* -----------------------------
+   Utility date helpers
+-------------------------------- */
+const d = (dateStr) => new Date(dateStr);
+const fmt = (dt) => dt.toISOString().substring(0, 10);
+const addDays = (dt, n) => { const x = new Date(dt); x.setDate(x.getDate() + n); return x; };
+const diffMonths = (a, b) => (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) + (b.getDate() >= a.getDate() ? 0 : -1);
+
+/* -----------------------------
+   Filing pattern matchers
+-------------------------------- */
+const dormantKeywords = ["dormant"];
+const madeUpPatterns = [
+    "accounts made up to", "abridged accounts made up to", "full accounts made up to",
+    "micro company accounts made up to", "total exemption small company accounts made up to",
+    "total exemption full accounts made up to", "unaudited abridged accounts made up to",
+    "group accounts made up to"
+];
+const shortenedPattern = /accounting period shortened from (.*) to (.*)/i;
+const extendedPattern = /accounting period extended from (.*) to (.*)/i;
+
+/* -----------------------------
+   Core transformation logic
+-------------------------------- */
+function extractAccountEvents(filings) {
+    const events = [];
+
+    for (const f of filings) {
+        const desc = f.description.toLowerCase();
+
+        // Detect dormant
+        const isDormant = dormantKeywords.some(k => desc.includes(k));
+
+        // Try shortened event
+        const shortMatch = desc.match(shortenedPattern);
+        if (shortMatch) {
+            events.push({
+                type: "shortened",
+                from: shortMatch[1].trim(),
+                to: shortMatch[2].trim(),
+                isDormant
+            });
+            continue;
+        }
+
+        // Try extended event
+        const extMatch = desc.match(extendedPattern);
+        if (extMatch) {
+            events.push({
+                type: "extended",
+                from: extMatch[1].trim(),
+                to: extMatch[2].trim(),
+                isDormant
+            });
+            continue;
+        }
+
+        // Try "made up to"
+        for (const p of madeUpPatterns) {
+            if (desc.includes(p)) {
+                // Extract last date
+                const allDates = desc.match(/\d{1,2} \w+ \d{4}/g);
+                if (allDates && allDates.length > 0) {
+                    const end = new Date(allDates.pop());
+                    events.push({
+                        type: "made_up_to",
+                        end,
+                        isDormant
+                    });
+                }
+                break;
+            }
+        }
+    }
+
+    // Deduplicate made_up_to entries by end date
+    const dedup = new Map();
+    for (const e of events) {
+        if (e.type === "made_up_to") {
+            const key = fmt(e.end);
+            dedup.set(key, e);
+        } else {
+            // Keep shortened/extended events explicitly
+            events.push(e);
+        }
+    }
+
+    return [...dedup.values(), ...events.filter(e => e.type !== "made_up_to")]
+        .sort((a, b) => (a.end ?? d(a.to)) - (b.end ?? d(b.to)));
+}
+
+/* -----------------------------
+   Build the continuous CTAP chain
+-------------------------------- */
+function buildCTAPs(incorp, events) {
+    const periods = [];
+
+    let prevStart = d(incorp);
+    let prevEnd = null;
+
+    for (const e of events) {
+        if (e.type === "made_up_to") {
+            const end = e.end;
+            const start = prevEnd ? addDays(prevEnd, 1) : prevStart;
+
+            // Enforce 12‑month max
+            const months = diffMonths(start, end);
+            if (months > 12) {
+                // Split into 12 + remainder
+                const twelveEnd = addDays(new Date(start), 365);
+                if (diffMonths(start, twelveEnd) > 12) {
+                    throw new Error("12-month split error.");
+                }
+
+                if (diffMonths(start, end) > 18) {
+                    throw new Error("ERROR: Filing indicates accounting period >18 months — not allowed.");
+                }
+
+                periods.push({ start, end: twelveEnd, status: e.isDormant ? "D" : "L" });
+                periods.push({ start: addDays(twelveEnd, 1), end, status: e.isDormant ? "D" : "L" });
+                prevEnd = end;
+                continue;
+            }
+
+            // Standard single period
+            periods.push({ start, end, status: e.isDormant ? "D" : "L" });
+            prevEnd = end;
+        }
+
+        else if (e.type === "shortened") {
+            const start = prevEnd ? addDays(prevEnd, 1) : prevStart;
+            const end = d(e.to);
+
+            periods.push({ start, end, status: e.isDormant ? "D" : "L" });
+            prevEnd = end;
+        }
+
+        else if (e.type === "extended") {
+            const start = prevEnd ? addDays(prevEnd, 1) : prevStart;
+            const end = d(e.to);
+
+            const months = diffMonths(start, end);
+            if (months > 18) throw new Error("Extended period exceeds 18 months.");
+
+            if (months > 12) {
+                const twelveEnd = addDays(new Date(start), 365);
+                periods.push({ start, end: twelveEnd, status: "L" });
+                periods.push({ start: addDays(twelveEnd, 1), end, status: "L" });
+            } else {
+                periods.push({ start, end, status: "L" });
+            }
+
+            prevEnd = end;
+        }
+    }
+
+    /* Add future projected periods until 2028 */
+    const lastEnd = prevEnd ?? d(incorp);
+    let nextStart = addDays(lastEnd, 1);
+
+    while (nextStart.getFullYear() <= 2028) {
+        const nextEnd = new Date(nextStart);
+        nextEnd.setFullYear(nextEnd.getFullYear() + 1);
+        nextEnd.setDate(nextEnd.getDate() - 1);
+
+        periods.push({ start: nextStart, end: nextEnd, status: "L" });
+        nextStart = addDays(nextEnd, 1);
+    }
+
+    return periods;
+}
+
+/* -----------------------------
+   Main Execution
+-------------------------------- */
+async function runTool() {
+    const key = document.getElementById("apiKey").value.trim();
+    const num = document.getElementById("companyNumber").value.trim();
+
+    document.getElementById("error").innerText = "";
+    document.getElementById("results").innerHTML = "";
+
+    try {
+        // Fetch incorporation
+        const profile = await chGet(`/company/${num}`, key);
+        const incorp = profile.date_of_creation;
+
+        // Fetch filings
+        const filings = await chGet(`/company/${num}/filing-history?items_per_page=100`, key);
+        const filtered = filings.items.filter(f => f.category === "accounts");
+
+        const events = extractAccountEvents(filtered);
+        const ctaps = buildCTAPs(incorp, events);
+
+        // Render table
+        let html = `<table>
+                        <tr><th>AP Start</th><th>AP End</th><th>Status</th></tr>`;
+        for (const p of ctaps) {
+            html += `<tr>
+                        <td>${fmt(p.start)}</td>
+                        <td>${fmt(p.end)}</td>
+                        <td>${p.status}</td>
+                     </tr>`;
+        }
+        html += "</table>";
+
+        document.getElementById("results").innerHTML = html;
+    }
+    catch (err) {
+        document.getElementById("error").innerText = err.message;
+    }
+}
+</script>
+
+</body>
+</html>
