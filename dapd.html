@@ -7,7 +7,7 @@
     body { font-family: Arial, sans-serif; margin: 40px; }
     label { display: block; margin-top: 15px; font-weight: bold; }
     input { padding: 8px; font-size: 14px; width: 320px; }
-    button { margin-top: 20px; padding: 10px 20px; font-size: 15px; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 15px; cursor: pointer; }
     table { margin-top: 30px; border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background: #f2f2f2; }
@@ -31,9 +31,9 @@
 
 
 <script>
-/* -----------------------------  
-   Companies House API helper  
--------------------------------- */
+/* ------------------------------------------------------------
+   Companies House Fetch Helper
+------------------------------------------------------------- */
 async function chGet(path, key) {
     const res = await fetch("https://api.company-information.service.gov.uk" + path, {
         headers: { "Authorization": "Basic " + btoa(key + ":") }
@@ -42,43 +42,36 @@ async function chGet(path, key) {
     return res.json();
 }
 
-/* -----------------------------  
-   Date utilities  
--------------------------------- */
-function addMonths(dt, months) {
-    const d = new Date(dt);
-    const y = d.getFullYear();
-    const m = d.getMonth();
-    const day = d.getDate();
+/* ------------------------------------------------------------
+   DATE HELPERS
+------------------------------------------------------------- */
+function addDays(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+}
 
-    const target = new Date(y, m + months, 1);
+function addMonths(date, months) {
+    const d = new Date(date);
+    const target = new Date(d.getFullYear(), d.getMonth() + months, 1);
     const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-    target.setDate(Math.min(day, last));
+    target.setDate(Math.min(d.getDate(), last));
     return target;
 }
 
+// Return end date for a CTAP that is `months` long (inclusive)
 function endAfterMonthsInclusive(start, months) {
     const nextStart = addMonths(start, months);
     return new Date(nextStart.getFullYear(), nextStart.getMonth(), nextStart.getDate() - 1);
 }
 
-const d = s => new Date(s);
-const fmt = dt => dt.toISOString().substring(0, 10);
-const addDays = (dt, n) => { const x = new Date(dt); x.setDate(x.getDate() + n); return x; };
+const d = (s) => new Date(s);
+const fmt = (dt) => dt.toISOString().substring(0, 10);
 
-function diffMonths(a, b) {
-    const years = b.getFullYear() - a.getFullYear();
-    const months = b.getMonth() - a.getMonth();
-    let total = years * 12 + months;
-    if (b.getDate() < a.getDate()) total -= 1;
-    return total;
-}
-
-/* -----------------------------  
-   Description parsing patterns  
--------------------------------- */
+/* ------------------------------------------------------------
+   FILING PARSING PATTERNS
+------------------------------------------------------------- */
 const dormantKeywords = ["dormant"];
-
 const madeUpPatterns = [
     "accounts made up to",
     "micro company accounts made up to",
@@ -93,9 +86,9 @@ const madeUpPatterns = [
 const shortenedPattern = /accounting period shortened from (.*) to (.*)/i;
 const extendedPattern = /accounting period extended from (.*) to (.*)/i;
 
-/* -----------------------------  
-   Extract account events  
--------------------------------- */
+/* ------------------------------------------------------------
+   Extract account events from filings
+------------------------------------------------------------- */
 function extractAccountEvents(filings) {
     const raw = [];
 
@@ -141,6 +134,7 @@ function extractAccountEvents(filings) {
         }
     }
 
+    // Deduplicate by end date
     const dedup = new Map();
     const others = [];
 
@@ -152,90 +146,79 @@ function extractAccountEvents(filings) {
         }
     }
 
-    const sorted = [...dedup.values(), ...others].sort((a, b) => {
+    return [...dedup.values(), ...others].sort((a, b) => {
         const aEnd = a.end ?? new Date(a.to);
         const bEnd = b.end ?? new Date(b.to);
         return aEnd - bEnd;
     });
-
-    return sorted;
 }
 
-/* -----------------------------  
-   Build CTAP chain  
--------------------------------- */
+/* ------------------------------------------------------------
+   BUILD CTAP PERIODS
+------------------------------------------------------------- */
 function buildCTAPs(incorpDate, events) {
     const periods = [];
 
-    let prevStart = d(incorpDate);
-    let prevEnd = null;
+    if (events.length === 0)
+        throw new Error("No account filings found – cannot determine CTAP structure.");
 
-    for (const e of events) {
-        if (e.type === "made_up_to") {
-            const end = e.end;
-            const status = e.isDormant ? "D" : "L";
+    // FIRST ACCOUNTS EVENT
+    const firstEvent = events.find(e => e.type === "made_up_to");
+    if (!firstEvent) throw new Error("No 'made up to' accounts found.");
 
-            const start = prevEnd ? addDays(prevEnd, 1) : prevStart;
-            const months = diffMonths(start, end);
+    const firstMadeUpTo = firstEvent.end;
 
-            if (months > 12) {
-                if (months > 18) throw new Error("Filing indicates accounting period >18 months.");
+    // 1) FIRST 12‑MONTH PERIOD
+    const first12End = endAfterMonthsInclusive(incorpDate, 12);
 
-                const twelveEnd = endAfterMonthsInclusive(start, 12);
+    if (first12End < firstMadeUpTo) {
+        // Split required
+        periods.push({
+            start: incorpDate,
+            end: first12End,
+            status: firstEvent.isDormant ? "D" : "L"
+        });
 
-                periods.push({ start, end: twelveEnd, status });
-                periods.push({ start: addDays(twelveEnd, 1), end, status });
-
-                prevEnd = end;
-                continue;
-            }
-
-            periods.push({ start, end, status });
-            prevEnd = end;
-        }
-
-        else if (e.type === "shortened") {
-            const start = prevEnd ? addDays(prevEnd, 1) : prevStart;
-            const end = d(e.to);
-            const status = e.isDormant ? "D" : "L";
-            periods.push({ start, end, status });
-            prevEnd = end;
-        }
-
-        else if (e.type === "extended") {
-            const start = prevEnd ? addDays(prevEnd, 1) : prevStart;
-            const end = d(e.to);
-            const months = diffMonths(start, end);
-
-            if (months > 18) throw new Error("Extended period exceeds 18 months.");
-
-            if (months > 12) {
-                const twelveEnd = endAfterMonthsInclusive(start, 12);
-                periods.push({ start, end: twelveEnd, status: "L" });
-                periods.push({ start: addDays(twelveEnd, 1), end, status: "L" });
-            } else {
-                periods.push({ start, end, status: "L" });
-            }
-
-            prevEnd = end;
-        }
+        periods.push({
+            start: addDays(first12End, 1),
+            end: firstMadeUpTo,
+            status: firstEvent.isDormant ? "D" : "L"
+        });
+    } else {
+        // Single period only
+        periods.push({
+            start: incorpDate,
+            end: firstMadeUpTo,
+            status: firstEvent.isDormant ? "D" : "L"
+        });
     }
 
-    /* Add future annual periods to 2028 */
-    let nextStart = prevEnd ? addDays(prevEnd, 1) : d(incorpDate);
+    // YEAR-END PATTERN FROM FIRST ACCOUNTS
+    const yearEndMonth = firstMadeUpTo.getMonth(); // usually 11 for December
+    const yearEndDay = firstMadeUpTo.getDate();    // usually 31
 
-    while (nextStart.getFullYear() <= 2028) {
-        const nextEnd = endAfterMonthsInclusive(nextStart, 12);
-        periods.push({ start: nextStart, end: nextEnd, status: "L" });
-        nextStart = addDays(nextEnd, 1);
+    let lastEnd = firstMadeUpTo;
+
+    // 2) GENERATE FUTURE ANNUAL CTAPs TO 2028
+    while (lastEnd.getFullYear() < 2028) {
+        const nextStart = addDays(lastEnd, 1);
+        const nextEnd = new Date(nextStart.getFullYear(), yearEndMonth, yearEndDay);
+
+        periods.push({
+            start: nextStart,
+            end: nextEnd,
+            status: "L"
+        });
+
+        lastEnd = nextEnd;
     }
 
     return periods;
 }
 
-/* -----------------------------  
-   Main tool runner  
--------------------------------- */
+/* ------------------------------------------------------------
+   MAIN EXECUTION
+------------------------------------------------------------- */
 async function runTool() {
     const key = document.getElementById("apiKey").value.trim();
     const num = document.getElementById("companyNumber").value.trim();
@@ -245,7 +228,7 @@ async function runTool() {
 
     try {
         const profile = await chGet(`/company/${num}`, key);
-        const incorp = profile.date_of_creation;
+        const incorp = d(profile.date_of_creation);
 
         const filings = await chGet(`/company/${num}/filing-history?items_per_page=200`, key);
         const accountsFilings = filings.items.filter(i => i.category === "accounts");
